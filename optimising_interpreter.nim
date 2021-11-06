@@ -7,9 +7,9 @@ import times
 
 
 type
-    InstructionKind = enum opAdd, opSub, opMove, opLoopStart, opLoopEnd, opRead, opWrite, opClear
-    Instruction = ref object
-        case kind: InstructionKind
+    InstrKind = enum opAdd, opSub, opMove, opLoopStart, opLoopEnd, opRead, opWrite, opClear
+    Instr = ref object
+        case kind: InstrKind
         of opAdd:
             add: uint8
         of opSub:
@@ -23,9 +23,8 @@ type
         of opRead, opWrite, opClear: discard
 
 
-
 proc sanitizeCode(code: string): string =
-    # var sanitized: seq[char]: @[]
+    ## Removes characters that are not instructions
     var sanitized: string = ""
 
     for c in code:
@@ -37,7 +36,7 @@ proc sanitizeCode(code: string): string =
     return sanitized
 
 
-proc parse(code: string): seq[Instruction] =
+proc parse(code: string): seq[Instr] =
     let code = sanitizeCode(code)
     result = @[]
 
@@ -57,29 +56,30 @@ proc parse(code: string): seq[Instruction] =
 
         case instr
         of '+':
-            result.add(Instruction(kind: opAdd, add: uint8(1 + count('+', maxCount=254))))
+            result.add(Instr(kind: opAdd, add: uint8(1 + count('+', maxCount=254))))
         of '-':
-            result.add(Instruction(kind: opSub, sub: uint8(1 + count('-', maxCount=254))))
+            result.add(Instr(kind: opSub, sub: uint8(1 + count('-', maxCount=254))))
         of '>':
-            result.add(Instruction(kind: opMove, move: 1 + count('>')))
+            result.add(Instr(kind: opMove, move: 1 + count('>')))
         of '<':
-            result.add(Instruction(kind: opMove, move: -(1 + count('<'))))
+            result.add(Instr(kind: opMove, move: -(1 + count('<'))))
         of '[':
+            # [-] and [+] are clear commands
             if (peek(0) == '-' or peek(0) == '+') and peek(1) == ']':
-                result.add(Instruction(kind: opClear))
+                result.add(Instr(kind: opClear))
                 idx += 2
             else:
-                result.add(Instruction(kind: opLoopStart))
+                result.add(Instr(kind: opLoopStart))
         of ']':
-            result.add(Instruction(kind: opLoopEnd))
+            result.add(Instr(kind: opLoopEnd))
         of ',':
-            result.add(Instruction(kind: opRead))
+            result.add(Instr(kind: opRead))
         of '.':
-            result.add(Instruction(kind: opWrite))
+            result.add(Instr(kind: opWrite))
         else: discard
 
 
-proc addJumpInformation(code: seq[Instruction]) =
+proc addJumpInformation(code: seq[Instr]) =
     var openBracketPosStack: seq[int] = @[]
 
     for idx, instr in code:
@@ -94,7 +94,7 @@ proc addJumpInformation(code: seq[Instruction]) =
             code[idx].startPos = openBracket
 
 
-proc run(code: seq[Instruction]; input, output: Stream) =
+proc run(code: seq[Instr]; input, output: Stream) =
     var tape: seq[uint8] = @[0u8]
 
     var codePos: int = 0
@@ -139,20 +139,29 @@ proc run(code: seq[Instruction]; input, output: Stream) =
         of opClear:
             tape[tapePos] = 0
 
-        else: discard
         inc codePos
 
 
-let startTime = epochTime()
+import std/macros
 
-let instructions = parse(readFile("bf/mandelbrot.bf"))
-addJumpInformation(instructions)
+macro timeit(code: untyped): untyped =
+    result = quote do:
+        block:
+            let startTime = epochTime()
+            `code`
+            let elapsedTime = epochTime() - startTime
+            echo()
+            echo "Time: ", elapsedTime
 
-# for i in instructions[0..50]:
+
+echo sizeof Instr(kind: opAdd)[]
+let Instrs = parse(readFile("bf/mandelbrot.bf"))
+
+timeit:
+    addJumpInformation(Instrs)
+
+# for i in Instrs[0..50]:
 #      echo repr i
 
-run(instructions, newStringStream("Hello"), newFileStream(stdout))
-
-let elapsedTime = epochTime() - startTime
-echo()
-echo "Time: ", elapsedTime
+timeit:
+    run(Instrs, newStringStream("Hello"), newFileStream(stdout))
