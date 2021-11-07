@@ -1,5 +1,6 @@
 
 import std/streams
+import sugar
 import times
 
 
@@ -21,6 +22,28 @@ type
         of opLoopEnd:
             startPos: int
         of opRead, opWrite, opClear: discard
+
+
+proc `==`(a: Instr, kind: InstrKind): bool =
+    a.kind == kind
+
+proc `==`(a: Instr, b: Instr): bool =
+    if a.kind != b.kind:
+        return false
+
+    case a.kind
+    of opAdd:
+        return a.add == b.add
+    of opSub:
+        return a.sub == b.sub
+    of opMove:
+        return a.move == b.move
+    of opLoopStart:
+        return a.startPos == b.startPos
+    of opLoopEnd:
+        return a.endPos == b.endPos
+    else:
+        return true
 
 
 proc sanitizeCode(code: string): string =
@@ -65,11 +88,11 @@ proc parse(code: string): seq[Instr] =
             result.add(Instr(kind: opMove, move: -(1 + count('<'))))
         of '[':
             # [-] and [+] are clear commands
-            if (peek(0) == '-' or peek(0) == '+') and peek(1) == ']':
-                result.add(Instr(kind: opClear))
-                idx += 2
-            else:
-                result.add(Instr(kind: opLoopStart))
+            # if (peek(0) == '-' or peek(0) == '+') and peek(1) == ']':
+            #     result.add(Instr(kind: opClear))
+            #     idx += 2
+            # else:
+            result.add(Instr(kind: opLoopStart))
         of ']':
             result.add(Instr(kind: opLoopEnd))
         of ',':
@@ -142,6 +165,66 @@ proc run(code: seq[Instr]; input, output: Stream) =
         inc codePos
 
 
+type SeqView[T] = object
+    data: ref seq[T]
+    bounds: Slice[int]
+
+proc seqView*[T](s: seq[T], bounds: Slice): SeqView[T] =
+    var refSeq: ref seq[T]
+    new(refSeq)
+    shallowCopy(refSeq[], s)
+    return SeqView[T](data: refSeq, bounds: bounds)
+
+proc moveViewTo*[T](s: SeqView[T], newBounds: Slice): SeqView[T] =
+    SeqView[T](data: s.data, bounds: newBounds)
+
+proc moveViewLowerBy*[T](s: SeqView[T], offset: int): SeqView[T] =
+    SeqView[T](data: s.data, bounds: (s.bounds.a + offset)..s.bounds.b)
+
+proc `[]`[T](s: SeqView[T], idx: int): T = s.data[idx + s.bounds.a]
+
+proc len[T](s: SeqView[T]): int =
+    return s.bounds.b - s.bounds.a
+
+type PatternReplacement = tuple[matchLen: int, pattern: seq[Instr]]
+type Replacer = proc (s: SeqView[Instr]): PatternReplacement {.closure.}
+
+
+proc optimise(
+        code: seq[Instr],
+        patterns: varargs[Replacer]): seq[Instr] =
+
+    var optimized: seq[Instr] = @[]
+    var view = seqView(code, 0..len(code))
+
+    var idx = 0
+    while idx < len(code):
+        var didReplace = false
+
+        for pattern in patterns:
+            view = moveViewTo(view, idx..len(code))
+            let (matchLen, replacement) = pattern(view)
+
+            if matchLen > 0:
+                optimized.add(replacement)
+                idx += len(replacement)
+                didReplace = true
+                break
+
+        if not didReplace:
+            optimized.add(code[idx])
+            idx += 1
+
+    return optimized
+
+
+proc optimiseClear(s: SeqView[Instr]): PatternReplacement =
+    if (s[0] == opLoopStart and
+        (s[1] == Instr(kind: opAdd, add: 1) or s[1] == Instr(kind: opSub, sub: 1) and
+        s[2] == opLoopEnd)):
+        echo "Match ", s[0].kind, s[1].kind, s[2].kind
+
+
 import std/macros
 
 macro timeit(code: untyped): untyped =
@@ -155,13 +238,15 @@ macro timeit(code: untyped): untyped =
 
 
 echo sizeof Instr(kind: opAdd)[]
-let Instrs = parse(readFile("bf/mandelbrot.bf"))
+var instructions = parse(readFile("bf/mandelbrot.bf"))
 
 timeit:
-    addJumpInformation(Instrs)
+    let replacements: seq[Replacer] = @[Replacer(optimiseClear)]
+    instructions = optimise(instructions, replacements)
+    addJumpInformation(instructions)
 
-# for i in Instrs[0..50]:
-#      echo repr i
+# for i in instructions[0..50]:
+#     echo repr i
 
 timeit:
-    run(Instrs, newStringStream("Hello"), newFileStream(stdout))
+    run(instructions, newStringStream("Hello"), newFileStream(stdout))
