@@ -8,7 +8,18 @@ import times
 
 
 type
-    InstrKind = enum opAdd, opSub, opMove, opLoopStart, opLoopEnd, opRead, opWrite, opClear
+    InstrKind = enum
+        opAdd,
+        opSub,
+        opMove,
+        opLoopStart,
+        opLoopEnd,
+        opRead,
+        opWrite,
+        opClear,
+        opScan,  # Moves to the next empty (0) cell to the right / left by jumping certain increments
+        opNone  # Used to avoid errors when doing pattern matching at the end of the instruction string
+
     Instr = ref object
         case kind: InstrKind
         of opAdd:
@@ -22,6 +33,9 @@ type
         of opLoopEnd:
             startPos: int
         of opRead, opWrite, opClear: discard
+        of opScan:
+            scanStep: int
+        of opNone: discard
 
 
 proc `==`(a: Instr, kind: InstrKind): bool =
@@ -65,7 +79,7 @@ proc parse(code: string): seq[Instr] =
 
     var idx = 0
 
-    template count(c: char, maxCount: int = 1000): int =
+    template count(c: char): int =
         let startIdx = idx
         while idx < len(code) and code[idx] == c: inc idx
         idx - startIdx
@@ -79,9 +93,9 @@ proc parse(code: string): seq[Instr] =
 
         case instr
         of '+':
-            result.add(Instr(kind: opAdd, add: uint8(1 + count('+', maxCount=254))))
+            result.add(Instr(kind: opAdd, add: uint8(1 + count('+'))))
         of '-':
-            result.add(Instr(kind: opSub, sub: uint8(1 + count('-', maxCount=254))))
+            result.add(Instr(kind: opSub, sub: uint8(1 + count('-'))))
         of '>':
             result.add(Instr(kind: opMove, move: 1 + count('>')))
         of '<':
@@ -162,6 +176,13 @@ proc run(code: seq[Instr]; input, output: Stream) =
         of opClear:
             tape[tapePos] = 0
 
+        of opScan:
+            while tape[tapePos] != 0:
+                tapePos += instr.scanStep
+
+        of opNone:
+            discard
+
         inc codePos
 
 
@@ -181,7 +202,17 @@ proc moveViewTo*[T](s: SeqView[T], newBounds: Slice): SeqView[T] =
 proc moveViewLowerBy*[T](s: SeqView[T], offset: int): SeqView[T] =
     SeqView[T](data: s.data, bounds: (s.bounds.a + offset)..s.bounds.b)
 
-proc `[]`*[T](s: SeqView[T], idx: int): T = s.data[idx + s.bounds.a]
+proc `[]`*[T](s: SeqView[T], idx: int): T =
+    s.data[idx + s.bounds.a]
+
+proc `[]`*(s: SeqView[Instr], idx: int): Instr =
+    if not ((idx+s.bounds.a) in s.bounds):
+        return Instr(kind: opNone)
+    return s.data[idx + s.bounds.a]
+
+iterator items*[T](s: SeqView[T]): T =
+    for idx in s.bounds:
+        yield s.data[idx]
 
 proc len*[T](s: SeqView[T]): int =
     return s.bounds.b - s.bounds.a
@@ -202,7 +233,7 @@ proc optimise(
         var didReplace = false
 
         for pattern in patterns:
-            view = moveViewTo(view, idx..len(code))
+            view = moveViewTo(view, idx..(len(code) - 1))
             let (matchLen, replacement) = pattern(view)
 
             if matchLen > 0:
@@ -224,6 +255,12 @@ proc optimiseClear(s: SeqView[Instr]): PatternReplacement =
         s[2] == opLoopEnd)):
         return (3, @[Instr(kind: opClear)])
 
+proc optimiseScan(s: SeqView[Instr]): PatternReplacement =
+    if (s[0] == opLoopStart and
+        s[1] == opMove and
+        s[2] == opLoopEnd):
+        return (3, @[Instr(kind: opScan, scanStep: s[1].move)])
+
 
 import std/macros
 
@@ -237,11 +274,10 @@ macro timeit(code: untyped): untyped =
             echo "Time: ", elapsedTime
 
 
-echo sizeof Instr(kind: opAdd)[]
-var instructions = parse(readFile("bf/hanoi.bf"))
+var instructions = parse(readFile("bf/mandelbrot.bf"))
 
 timeit:
-    let replacements: seq[Replacer] = @[Replacer(optimiseClear)]
+    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan)]
     instructions = optimise(instructions, replacements)
     addJumpInformation(instructions)
 
