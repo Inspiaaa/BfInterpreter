@@ -3,7 +3,7 @@ import std/streams
 import times
 
 
-# 4.08s for mandelbrot
+# 3.65s for mandelbrot
 
 
 type
@@ -17,6 +17,8 @@ type
         opWrite,
         opClear,
         opScan,  # Moves to the next empty (0) cell to the right / left by jumping certain increments
+        opCopyAdd,  # Adds the current cell value to another cell
+        opCopySub,
         opNone  # Used to avoid errors when doing pattern matching at the end of the instruction string
 
     Instr = object
@@ -34,6 +36,10 @@ type
         of opRead, opWrite, opClear: discard
         of opScan:
             scanStep: int
+        of opCopyAdd:
+            copyAddOffset: int
+        of opCopySub:
+            copySubOffset: int
         of opNone: discard
 
 
@@ -57,6 +63,9 @@ proc `==`(a: Instr, b: Instr): bool =
         return a.endPos == b.endPos
     else:
         return true
+
+proc `!=`(a: Instr, kind: InstrKind): bool =
+    a.kind != kind
 
 
 proc sanitizeCode(code: string): string =
@@ -136,6 +145,10 @@ proc run(code: seq[Instr]; input, output: Stream) =
     var codePos: int = 0
     var tapePos: int = 0
 
+    template extendTapeIfNecessary(targetLen: int) =
+        while targetLen >= len(tape):
+                tape.add(0)
+
     while codePos < len(code):
         let instr = code[codePos]
 
@@ -150,11 +163,11 @@ proc run(code: seq[Instr]; input, output: Stream) =
 
         of opMove:
             tapePos += instr.move
-            while tapePos >= len(tape):
-                tape.add(0)
+            extendTapeIfNecessary(tapePos)
 
         of opWrite:
             output.write char(tape[tapePos])
+            # echo tape[tapePos]
 
         of opRead:
             var input_char: uint8
@@ -178,8 +191,17 @@ proc run(code: seq[Instr]; input, output: Stream) =
         of opScan:
             while tape[tapePos] != 0:
                 tapePos += instr.scanStep
-                while tapePos >= len(tape):
-                    tape.add(0)
+                extendTapeIfNecessary(tapePos)
+
+        of opCopyAdd:
+            let targetPos = tapePos + instr.copyAddOffset
+            extendTapeIfNecessary(targetPos)
+            tape[targetPos] += tape[tapePos]
+
+        of opCopySub:
+            let targetPos = tapePos + instr.copySubOffset
+            extendTapeIfNecessary(targetPos)
+            tape[targetPos] -= tape[tapePos]
 
         of opNone:
             discard
@@ -251,16 +273,42 @@ proc optimise(
 
 
 proc optimiseClear(s: SeqView[Instr]): PatternReplacement =
+    # Optimises [-] and [+] to a single opClear instruction
     if (s[0] == opLoopStart and
         (s[1] == Instr(kind: opAdd, add: 1) or s[1] == Instr(kind: opSub, sub: 1) and
         s[2] == opLoopEnd)):
         return (3, @[Instr(kind: opClear)])
 
 proc optimiseScan(s: SeqView[Instr]): PatternReplacement =
+    # Optimises [>], [<], [>>>>], ... to a single opScan instruction
     if (s[0] == opLoopStart and
         s[1] == opMove and
         s[2] == opLoopEnd):
         return (3, @[Instr(kind: opScan, scanStep: s[1].move)])
+
+# Possible optimisation for [+>+]: Invert the current cell and then do the usual optimise move optimisation
+
+proc optimiseMove(s: SeqView[Instr]): PatternReplacement =
+    # Optimises a [->+<] instruction to an opCopy and opClear
+    # Instr: [->+<]
+    # Idx:   012345
+    if s[0] != opLoopStart or s[1] != opSub or s[5] != opLoopEnd:
+        return
+
+    let moveA = s[2]
+    let increment = s[3]
+    let moveB = s[4]
+
+    if moveA != opMove or moveB != opMove:
+        return
+
+    if moveA.move != -moveB.move:
+        return
+
+    if increment == opAdd and increment.add == 1:
+        return (6, @[Instr(kind: opCopyAdd, copyAddOffset: moveA.move), Instr(kind: opClear)])
+    if increment == opSub and increment.sub == 1:
+        return (6, @[Instr(kind: opCopySub, copySubOffset: moveA.move), Instr(kind: opClear)])
 
 
 import std/macros
@@ -276,13 +324,14 @@ macro timeit(code: untyped): untyped =
 
 
 var instructions = parse(readFile("bf/mandelbrot.bf"))
+# var instructions = parse("+++[->+<].>.")
 
 timeit:
-    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan)]
+    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan), Replacer(optimiseMove)]
     instructions = optimise(instructions, replacements)
     addJumpInformation(instructions)
 
-# for i in instructions[0..50]:
+# for i in instructions[0..min(50, len(instructions)-1)]:
 #     echo repr i
 
 timeit:
