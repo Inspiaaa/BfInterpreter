@@ -4,7 +4,7 @@ import sugar
 import times
 
 
-# 6.25s for mandelbrot
+# 4.84s for mandelbrot
 
 
 type
@@ -179,6 +179,8 @@ proc run(code: seq[Instr]; input, output: Stream) =
         of opScan:
             while tape[tapePos] != 0:
                 tapePos += instr.scanStep
+                while tapePos >= len(tape):
+                    tape.add(0)
 
         of opNone:
             discard
