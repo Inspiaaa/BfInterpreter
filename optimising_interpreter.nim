@@ -1,10 +1,9 @@
 
 import std/streams
-import sugar
 import times
 
 
-# 4.84s for mandelbrot
+# 4.08s for mandelbrot
 
 
 type
@@ -20,7 +19,7 @@ type
         opScan,  # Moves to the next empty (0) cell to the right / left by jumping certain increments
         opNone  # Used to avoid errors when doing pattern matching at the end of the instruction string
 
-    Instr = ref object
+    Instr = object
         case kind: InstrKind
         of opAdd:
             add: uint8
@@ -116,7 +115,7 @@ proc parse(code: string): seq[Instr] =
         else: discard
 
 
-proc addJumpInformation(code: seq[Instr]) =
+proc addJumpInformation(code: var seq[Instr]) =
     var openBracketPosStack: seq[int] = @[]
 
     for idx, instr in code:
