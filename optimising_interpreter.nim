@@ -181,9 +181,9 @@ proc moveViewTo*[T](s: SeqView[T], newBounds: Slice): SeqView[T] =
 proc moveViewLowerBy*[T](s: SeqView[T], offset: int): SeqView[T] =
     SeqView[T](data: s.data, bounds: (s.bounds.a + offset)..s.bounds.b)
 
-proc `[]`[T](s: SeqView[T], idx: int): T = s.data[idx + s.bounds.a]
+proc `[]`*[T](s: SeqView[T], idx: int): T = s.data[idx + s.bounds.a]
 
-proc len[T](s: SeqView[T]): int =
+proc len*[T](s: SeqView[T]): int =
     return s.bounds.b - s.bounds.a
 
 type PatternReplacement = tuple[matchLen: int, pattern: seq[Instr]]
@@ -207,7 +207,7 @@ proc optimise(
 
             if matchLen > 0:
                 optimized.add(replacement)
-                idx += len(replacement)
+                idx += matchLen
                 didReplace = true
                 break
 
@@ -222,7 +222,7 @@ proc optimiseClear(s: SeqView[Instr]): PatternReplacement =
     if (s[0] == opLoopStart and
         (s[1] == Instr(kind: opAdd, add: 1) or s[1] == Instr(kind: opSub, sub: 1) and
         s[2] == opLoopEnd)):
-        echo "Match ", s[0].kind, s[1].kind, s[2].kind
+        return (3, @[Instr(kind: opClear)])
 
 
 import std/macros
@@ -238,7 +238,7 @@ macro timeit(code: untyped): untyped =
 
 
 echo sizeof Instr(kind: opAdd)[]
-var instructions = parse(readFile("bf/mandelbrot.bf"))
+var instructions = parse(readFile("bf/hanoi.bf"))
 
 timeit:
     let replacements: seq[Replacer] = @[Replacer(optimiseClear)]
