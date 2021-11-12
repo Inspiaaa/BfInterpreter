@@ -20,8 +20,7 @@ var instructions = parse(readFile("bf/mandelbrot.bf"))
 # var instructions = parse("+++[->+<].>.")
 
 timeit:
-    # let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan), Replacer(optimiseMove)]
-    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan)]
+    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan), Replacer(optimiseMove)]
     instructions = optimise(instructions, replacements)
     addJumpInformation(instructions)
 

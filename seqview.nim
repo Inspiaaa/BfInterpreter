@@ -23,7 +23,7 @@ proc `[]`*[T](self: SeqView[T], idx: int): T =
 proc `[]`*[T](self: SeqView[T], bounds: Slice): SeqView[T] =
     SeqView[T](
         data: self.data,
-        bounds: (bounds.a + self.bounds.a)..(bounds.b + self.bounds.b)
+        bounds: (bounds.a + self.bounds.a)..(bounds.b + self.bounds.a)
     )
 
 

@@ -98,6 +98,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
     var register: int = 0
 
     while codePos < len(code):
+        {.push overflowchecks: off.}
         let instr = code[codePos]
         # echo codePos, " ", tapePos, " ", repr(instr)
 
@@ -169,6 +170,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
             discard
 
         inc codePos
+        {.pop.}
 
 
 type PatternReplacement* = tuple[matchLen: int, pattern: seq[Instr]]
@@ -225,23 +227,35 @@ proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
     # Optimises a [->+<] instruction to an opCopy and opClear
     # Instr: [->+<]
     # Idx:   012345
-    if s[0] != opLoopStart or s[1] != opSub or s[5] != opLoopEnd:
+
+    if not matchPattern(s,
+            opLoopStart,
+            opSub,
+            opMove,
+            opSub or opAdd,
+            opMove,
+            opLoopEnd):
         return
 
     let moveA = s[2]
     let increment = s[3]
     let moveB = s[4]
-
-    if moveA != opMove or moveB != opMove:
-        return
+    let loopStart = s[0]
+    let loopEnd = s[5]
 
     if moveA.move != -moveB.move:
         return
 
+    var copyInstr: Instr
     if increment == opAdd and increment.add == 1:
-        return (6, @[Instr(kind: opCopyAdd, copyAddOffset: moveA.move), Instr(kind: opClear)])
+        copyInstr = Instr(kind: opCopyAdd, copyAddOffset: moveA.move)
     if increment == opSub and increment.sub == 1:
-        return (6, @[Instr(kind: opCopySub, copySubOffset: moveA.move), Instr(kind: opClear)])
+        copyInstr = Instr(kind: opCopySub, copySubOffset: moveA.move)
+
+    if copyInstr == opNone:
+        return
+
+    return (6, @[loopStart, copyInstr, Instr(kind: opClear), loopEnd])
 
 proc optimiseMultyCopy*(s: SeqView[Instr]): PatternReplacement =
     if s[0] != opLoopStart:
