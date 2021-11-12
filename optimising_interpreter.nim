@@ -2,6 +2,7 @@
 import std/streams
 import ./ir
 import ./seqview
+import ./pattern_matching
 
 
 # 3.63s for mandelbrot
@@ -204,16 +205,16 @@ proc optimise*(
 
 proc optimiseClear*(s: SeqView[Instr]): PatternReplacement =
     # Optimises [-] and [+] to a single opClear instruction
-    if (s[0] == opLoopStart and
-        (s[1] == Instr(kind: opAdd, add: 1) or s[1] == Instr(kind: opSub, sub: 1) and
-        s[2] == opLoopEnd)):
+    if matchPattern(s,
+            opLoopStart,
+            Instr(kind: opAdd, add: 1) or Instr(kind: opSub, sub: 1),
+            opLoopEnd):
         return (3, @[Instr(kind: opClear)])
+
 
 proc optimiseScan*(s: SeqView[Instr]): PatternReplacement =
     # Optimises [>], [<], [>>>>], ... to a single opScan instruction
-    if (s[0] == opLoopStart and
-        s[1] == opMove and
-        s[2] == opLoopEnd):
+    if matchPattern(s, opLoopStart, opMove, opLoopEnd):
         return (3, @[Instr(kind: opScan, scanStep: s[1].move)])
 
 # Possible optimisation for [+>+]: Invert the current cell and then do the usual optimise move optimisation
