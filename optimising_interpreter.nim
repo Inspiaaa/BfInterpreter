@@ -106,8 +106,8 @@ proc run*(code: seq[Instr]; input, output: Stream) =
     while codePos < len(code):
         {.push overflowchecks: off.}
         let instr = code[codePos]
-        # echo codePos, " ", tapePos, " ", instr
 
+        # echo codePos, " ", tapePos, " ", instr
         # echo codePos, " Tape ", tape, len(tape)
 
         case instr.kind
@@ -150,27 +150,19 @@ proc run*(code: seq[Instr]; input, output: Stream) =
                 extendTapeIfNecessary(tapePos)
 
         of opCopyAdd:
-            let targetPos = tapePos + instr.copyAddOffset
-            extendTapeIfNecessary(targetPos)
-            tape[targetPos] += tape[tapePos]
+            safeAccess(tapePos + instr.copyAddOffset) += tape[tapePos]
 
         of opCopySub:
-            let targetPos = tapePos + instr.copySubOffset
-            extendTapeIfNecessary(targetPos)
-            tape[targetPos] -= tape[tapePos]
+            safeAccess(tapePos + instr.copySubOffset) -= tape[tapePos]
 
         of opSetupMul:
             mulFactor = instr.mul
 
         of opMulAdd:
-            let targetPos = tapePos + instr.mulAddOffset
-            extendTapeIfNecessary(targetPos)
-            tape[targetPos] += tape[tapePos] * mulFactor
+            safeAccess(tapePos + instr.mulAddOffset) += tape[tapePos] * mulFactor
 
         of opMulSub:
-            let targetPos = tapePos + instr.mulSubOffset
-            extendTapeIfNecessary(targetPos)
-            tape[targetPos] -= tape[tapePos] * mulFactor
+            safeAccess(tapePos + instr.mulSubOffset) -= tape[tapePos] * mulFactor
 
         of opAddAtOffset:
             safeAccess(tapePos + instr.addAtOffset.tape) += instr.addAtOffset.cell

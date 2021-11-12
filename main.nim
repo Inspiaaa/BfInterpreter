@@ -26,7 +26,7 @@ timeit:
         Replacer(optimiseScan),
         Replacer(optimiseMove),
         Replacer(optimiseMultiMul),
-        Replacer(optimiseSetAtOffset)
+        Replacer(optimiseLazyMoves)
     ]
     instructions = optimise(instructions, replacements)
     addJumpInformation(instructions)
