@@ -85,7 +85,6 @@ proc addJumpInformation*(code: var seq[Instr]) =
 proc run*(code: seq[Instr]; input, output: Stream) =
     ## Executes a sequence of instructions.
 
-    # TODO: Fix negative index! (when running mandelbrot without starting at index e.g. 100)
     var tape: seq[uint8] = @[0u8]
 
     var codePos: int = 0
@@ -95,7 +94,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         while targetLen >= len(tape):
             tape.add(0)
 
-    var register: int = 0
+    var mulFactor: uint8 = 0
 
     while codePos < len(code):
         {.push overflowchecks: off.}
@@ -153,18 +152,18 @@ proc run*(code: seq[Instr]; input, output: Stream) =
             extendTapeIfNecessary(targetPos)
             tape[targetPos] -= tape[tapePos]
 
-        of opStore:
-            register = instr.storeValue
+        of opSetupMul:
+            mulFactor = instr.mul
 
         of opMulAdd:
-            let targetPos = tapePos + instr.copySubOffset
+            let targetPos = tapePos + instr.mulAddOffset
             extendTapeIfNecessary(targetPos)
-            tape[targetPos] += tape[tapePos] * uint8(register)
+            tape[targetPos] += tape[tapePos] * mulFactor
 
         of opMulSub:
-            let targetPos = tapePos + instr.copySubOffset
+            let targetPos = tapePos + instr.mulSubOffset
             extendTapeIfNecessary(targetPos)
-            tape[targetPos] -= tape[tapePos] * uint8(register)
+            tape[targetPos] -= tape[tapePos] * mulFactor
 
         of opNone:
             discard
@@ -222,8 +221,6 @@ proc optimiseScan*(s: SeqView[Instr]): PatternReplacement =
 # Possible optimisation for [+>+]: Invert the current cell and then do the usual optimise move optimisation
 
 proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
-    # Doesn't currently work.
-
     # Optimises a [->+<] instruction to an opCopy and opClear
     # Instr: [->+<]
     # Idx:   012345
@@ -232,7 +229,7 @@ proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
             opLoopStart,
             opSub,
             opMove,
-            opSub or opAdd,
+            Instr(kind: opSub, sub: 1) or Instr(kind: opAdd, add: 1),
             opMove,
             opLoopEnd):
         return
@@ -247,9 +244,9 @@ proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
         return
 
     var copyInstr: Instr
-    if increment == opAdd and increment.add == 1:
+    if increment == opAdd:
         copyInstr = Instr(kind: opCopyAdd, copyAddOffset: moveA.move)
-    if increment == opSub and increment.sub == 1:
+    if increment == opSub:
         copyInstr = Instr(kind: opCopySub, copySubOffset: moveA.move)
 
     if copyInstr == opNone:
@@ -257,35 +254,76 @@ proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
 
     return (6, @[loopStart, copyInstr, Instr(kind: opClear), loopEnd])
 
-proc optimiseMultyCopy*(s: SeqView[Instr]): PatternReplacement =
+
+proc getSimpleLoop(s: SeqView[Instr]): int =
+    ## Returns the length of a basic loop, i.e. a loop that only consists of +, -, > and <, and
+    ## where the total pointer movement must add up to 0.
+    ## If this is not the case, it returns 0 for the length.
+
     if s[0] != opLoopStart:
-        return
+        return 0
 
     var moveSum = 0
-    var idx = 0
-    var instr = s[idx]
-    while instr == opAdd or instr == opSub or instr == opMove:
-        inc idx
+    var idx = 1
+    while true:
+        let instr = s[idx]
         if instr == opMove:
             moveSum += instr.move
+        elif not (instr == opAdd or instr == opSub):
+            break
+        inc idx
 
-    if moveSum != 0:
+    if s[idx] != opLoopEnd:
+        return 0
+
+    return idx + 1
+
+
+proc optimiseMultiMul*(s: SeqView[Instr]): PatternReplacement =
+    ## Optimises a multiplication loop to a simpler instruction set.
+    ## E.g. [->+++<] (Add current cell * 3 to the cell to the right)
+    ## => [ opClear, opStore, opMul ]
+
+    let endIdx = getSimpleLoop(s) - 1
+    if endIdx == -1:
         return
 
-    var replacement: seq[Instr]
-    template add(i: Instr) =
-        replacement.add(i)
+    let loopStart = s[0]
+    let loopEnd = s[endIdx]
 
-    dec idx
-    moveSum = 0
-    for instr in s[0..<idx]:
+    var replacement: seq[Instr]
+
+    template setupMul(factor: uint8) = replacement.add(Instr(kind: opSetupMul, mul: factor))
+    template mulAdd(offset: int) = replacement.add(Instr(kind: opMulAdd, mulAddOffset: offset))
+    template mulSub(offset: int) = replacement.add(Instr(kind: opMulSub, mulSubOffset: offset))
+    template copyAdd(offset: int) = replacement.add(Instr(kind: opCopyAdd, copyAddOffset: offset))
+    template copySub(offset: int) = replacement.add(Instr(kind: opCopySub, copySubOffset: offset))
+
+    replacement.add(loopStart)
+
+    var moveSum = 0
+    # Skip the [-
+    for instr in s[2..<endIdx]:
         case instr.kind
         of opAdd:
             if instr.add == 1:
-                add(Instr(kind: opCopyAdd, copyAddOffset: moveSum))
+                copyAdd(moveSum)
             else:
-                add(Instr(kind: opStore, storeValue: int(instr.add)))
-                add(Instr(kind: opMulAdd, mulAddOffset: moveSum))
+                setupMul(instr.add)
+                mulAdd(moveSum)
+        of opSub:
+            if instr.sub == 1:
+                copySub(moveSum)
+            else:
+                setupMul(instr.sub)
+                mulSub(moveSum)
+        of opMove:
+            moveSum += instr.move
         else:
             discard
+        # TODO: Check that the source cell (i.e. moveSum == 0) is not modified!
 
+    replacement.add(Instr(kind: opClear))
+    replacement.add(loopEnd)
+
+    return (endIdx+1, replacement)

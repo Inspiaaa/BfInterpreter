@@ -17,15 +17,15 @@ macro timeit(code: untyped): untyped =
 
 
 var instructions = parse(readFile("bf/mandelbrot.bf"))
-# var instructions = parse("+++[->+<].>.")
+# var instructions = parse("+++[->++<].>.")
 
 timeit:
-    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan), Replacer(optimiseMove)]
+    let replacements: seq[Replacer] = @[Replacer(optimiseClear), Replacer(optimiseScan), Replacer(optimiseMove), Replacer(optimiseMultiMul)]
     instructions = optimise(instructions, replacements)
     addJumpInformation(instructions)
 
-# for i in instructions[0..min(50, len(instructions)-1)]:
-#     echo repr i
+for i in instructions[0..min(50, len(instructions)-1)]:
+    echo repr i
 
 timeit:
     run(instructions, newStringStream("Hello"), newFileStream(stdout))

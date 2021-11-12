@@ -16,8 +16,8 @@ type
         opScan,  # Moves to the next empty (0) cell to the right / left by jumping certain increments
         opCopyAdd,  # Adds the current cell value to another cell
         opCopySub,  # Subtracts ...
-        opStore,  # Stores a value in the register
-        opMulAdd,  # Adds the current cell times the value in the register to another cell
+        opSetupMul,  # Sets the multiplication factor
+        opMulAdd,  # Adds the current cell times the value stored multiplication factor to another cell
         opMulSub
 
     Instr* = object
@@ -39,8 +39,8 @@ type
             copyAddOffset*: int
         of opCopySub:
             copySubOffset*: int
-        of opStore:
-            storeValue*: int
+        of opSetupMul:
+            mul*: uint8
         of opMulAdd:
             mulAddOffset*: int
         of opMulSub:
