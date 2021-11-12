@@ -99,7 +99,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
     while codePos < len(code):
         {.push overflowchecks: off.}
         let instr = code[codePos]
-        # echo codePos, " ", tapePos, " ", repr(instr)
+        # echo codePos, " ", tapePos, " ", instr
 
         # echo codePos, " Tape ", tape, len(tape)
 
@@ -283,6 +283,9 @@ proc optimiseMultiMul*(s: SeqView[Instr]): PatternReplacement =
     ## Optimises a multiplication loop to a simpler instruction set.
     ## E.g. [->+++<] (Add current cell * 3 to the cell to the right)
     ## => [ opClear, opStore, opMul ]
+
+    if not matchPattern(s, opLoopStart, Instr(kind: opSub, sub: 1)):
+        return
 
     let endIdx = getSimpleLoop(s) - 1
     if endIdx == -1:
