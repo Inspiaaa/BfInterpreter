@@ -3,7 +3,8 @@
 
 type
     InstrKind* = enum
-        opNone  # Default: Used to avoid errors when doing pattern matching at the end of the instruction string
+        # Default: Used to avoid errors when doing pattern matching at the end of the instruction string
+        opNone
         opAdd,
         opSub,
         opMove,
@@ -15,6 +16,9 @@ type
         opScan,  # Moves to the next empty (0) cell to the right / left by jumping certain increments
         opCopyAdd,  # Adds the current cell value to another cell
         opCopySub,  # Subtracts ...
+        opStore,  # Stores a value in the register
+        opMulAdd,  # Adds the current cell times the value in the register to another cell
+        opMulSub
 
     Instr* = object
         case kind*: InstrKind
@@ -35,6 +39,12 @@ type
             copyAddOffset*: int
         of opCopySub:
             copySubOffset*: int
+        of opStore:
+            storeValue*: int
+        of opMulAdd:
+            mulAddOffset*: int
+        of opMulSub:
+            mulSubOffset*: int
         of opNone: discard
 
 

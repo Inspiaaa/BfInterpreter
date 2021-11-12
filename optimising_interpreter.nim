@@ -9,6 +9,7 @@ import ./seqview
 
 proc sanitizeCode(code: string): string =
     ## Removes characters that are not instructions
+
     var sanitized: string = ""
 
     for c in code:
@@ -21,6 +22,9 @@ proc sanitizeCode(code: string): string =
 
 
 proc parse*(code: string): seq[Instr] =
+    ## Converts a string brainfuck code into sequence of instructions.
+    ## Performs the first optimisation: Grouping of Move and Add / Subtract instructions.
+
     let code = sanitizeCode(code)
     result = @[]
 
@@ -62,6 +66,7 @@ proc parse*(code: string): seq[Instr] =
 
 
 proc addJumpInformation*(code: var seq[Instr]) =
+    ## Adds the target jump location of each '[' and ']' instruction.
     var openBracketPosStack: seq[int] = @[]
 
     for idx, instr in code:
@@ -77,6 +82,9 @@ proc addJumpInformation*(code: var seq[Instr]) =
 
 
 proc run*(code: seq[Instr]; input, output: Stream) =
+    ## Executes a sequence of instructions.
+
+    # TODO: Fix negative index! (when running mandelbrot without starting at index e.g. 100)
     var tape: seq[uint8] = @[0u8]
 
     var codePos: int = 0
@@ -84,12 +92,15 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
     template extendTapeIfNecessary(targetLen: int) =
         while targetLen >= len(tape):
-                tape.add(0)
+            tape.add(0)
+
+    var register: int = 0
 
     while codePos < len(code):
         let instr = code[codePos]
+        # echo codePos, " ", tapePos, " ", repr(instr)
 
-        # echo c, " Tape ", tape, len(tape)
+        # echo codePos, " Tape ", tape, len(tape)
 
         case instr.kind
         of opAdd:
@@ -140,6 +151,19 @@ proc run*(code: seq[Instr]; input, output: Stream) =
             extendTapeIfNecessary(targetPos)
             tape[targetPos] -= tape[tapePos]
 
+        of opStore:
+            register = instr.storeValue
+
+        of opMulAdd:
+            let targetPos = tapePos + instr.copySubOffset
+            extendTapeIfNecessary(targetPos)
+            tape[targetPos] += tape[tapePos] * uint8(register)
+
+        of opMulSub:
+            let targetPos = tapePos + instr.copySubOffset
+            extendTapeIfNecessary(targetPos)
+            tape[targetPos] -= tape[tapePos] * uint8(register)
+
         of opNone:
             discard
 
@@ -155,14 +179,14 @@ proc optimise*(
         patterns: varargs[Replacer]): seq[Instr] =
 
     var optimized: seq[Instr] = @[]
-    var view = initSeqView(code, 0..len(code))
+    var view = initSeqView(code, 0..<len(code))
 
     var idx = 0
     while idx < len(code):
         var didReplace = false
 
         for pattern in patterns:
-            view.moveTo(idx..(len(code) - 1))
+            view.moveTo(idx..<len(code))
             let (matchLen, replacement) = pattern(view)
 
             if matchLen > 0:
@@ -195,6 +219,8 @@ proc optimiseScan*(s: SeqView[Instr]): PatternReplacement =
 # Possible optimisation for [+>+]: Invert the current cell and then do the usual optimise move optimisation
 
 proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
+    # Doesn't currently work.
+
     # Optimises a [->+<] instruction to an opCopy and opClear
     # Instr: [->+<]
     # Idx:   012345
@@ -215,3 +241,36 @@ proc optimiseMove*(s: SeqView[Instr]): PatternReplacement =
         return (6, @[Instr(kind: opCopyAdd, copyAddOffset: moveA.move), Instr(kind: opClear)])
     if increment == opSub and increment.sub == 1:
         return (6, @[Instr(kind: opCopySub, copySubOffset: moveA.move), Instr(kind: opClear)])
+
+proc optimiseMultyCopy*(s: SeqView[Instr]): PatternReplacement =
+    if s[0] != opLoopStart:
+        return
+
+    var moveSum = 0
+    var idx = 0
+    var instr = s[idx]
+    while instr == opAdd or instr == opSub or instr == opMove:
+        inc idx
+        if instr == opMove:
+            moveSum += instr.move
+
+    if moveSum != 0:
+        return
+
+    var replacement: seq[Instr]
+    template add(i: Instr) =
+        replacement.add(i)
+
+    dec idx
+    moveSum = 0
+    for instr in s[0..<idx]:
+        case instr.kind
+        of opAdd:
+            if instr.add == 1:
+                add(Instr(kind: opCopyAdd, copyAddOffset: moveSum))
+            else:
+                add(Instr(kind: opStore, storeValue: int(instr.add)))
+                add(Instr(kind: opMulAdd, mulAddOffset: moveSum))
+        else:
+            discard
+
