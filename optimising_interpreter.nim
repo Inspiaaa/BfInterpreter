@@ -8,6 +8,9 @@ import ./pattern_matching
 # 3.63s for mandelbrot
 
 
+echo "Size of instr: ", sizeof(Instr)
+
+
 proc sanitizeCode(code: string): string =
     ## Removes characters that are not instructions
 
@@ -94,6 +97,10 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         while targetLen >= len(tape):
             tape.add(0)
 
+    template safeAccess(targetPos: int): untyped =
+        extendTapeIfNecessary(targetPos)
+        tape[targetPos]
+
     var mulFactor: uint8 = 0
 
     while codePos < len(code):
@@ -164,6 +171,12 @@ proc run*(code: seq[Instr]; input, output: Stream) =
             let targetPos = tapePos + instr.mulSubOffset
             extendTapeIfNecessary(targetPos)
             tape[targetPos] -= tape[tapePos] * mulFactor
+
+        of opAddAtOffset:
+            safeAccess(tapePos + instr.addAtOffset.tape) += instr.addAtOffset.cell
+
+        of opSubAtOffset:
+            safeAccess(tapePos + instr.subAtOffset.tape) -= instr.subAtOffset.cell
 
         of opNone:
             discard
@@ -330,3 +343,32 @@ proc optimiseMultiMul*(s: SeqView[Instr]): PatternReplacement =
     replacement.add(loopEnd)
 
     return (endIdx+1, replacement)
+
+
+proc optimiseLazyMoves*(s: SeqView[Instr]): PatternReplacement =
+    ## Only moves the tape pointer after doing multiple operations.
+
+    var replacement: seq[Instr]
+    var moveSum = 0
+    var idx = 0
+
+    while true:
+        let instr = s[idx]
+        case instr.kind
+        of opMove:
+            moveSum += instr.move
+        of opAdd:
+            replacement.add(Instr(
+                kind: opAddAtOffset,
+                addAtOffset: ValueWithOffset(cell: instr.add, tape: moveSum)))
+        of opSub:
+            replacement.add(Instr(
+                kind: opSubAtOffset,
+                subAtOffset: ValueWithOffset(cell: instr.sub, tape: moveSum)))
+        else:
+            break
+        inc idx
+
+    if len(replacement) >= 2:
+        replacement.add(Instr(kind: opMove, move: moveSum))
+        return (idx, replacement)

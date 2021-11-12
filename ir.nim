@@ -18,7 +18,13 @@ type
         opCopySub,  # Subtracts ...
         opSetupMul,  # Sets the multiplication factor
         opMulAdd,  # Adds the current cell times the value stored multiplication factor to another cell
+        opAddAtOffset,
+        opSubAtOffset,
         opMulSub
+
+    ValueWithOffset* = ref object
+        cell*: uint8
+        tape*: int
 
     Instr* = object
         case kind*: InstrKind
@@ -45,8 +51,11 @@ type
             mulAddOffset*: int
         of opMulSub:
             mulSubOffset*: int
+        of opAddAtOffset:
+            addAtOffset*: ValueWithOffset
+        of opSubAtOffset:
+            subAtOffset*: ValueWithOffset
         of opNone: discard
-
 
 
 proc `==`*(a: Instr, kind: InstrKind): bool =

@@ -29,7 +29,7 @@ proc flattenOrHierarchy(node: NimNode): seq[NimNode] =
             result.add(expression)
 
 
-macro matchPattern*(data: untyped, tokens: varargs[untyped]): untyped =
+macro matchPattern*(data: untyped, tokens: varargs[untyped], offset: static[int] = 0): untyped =
     ## Lets you write generic pattern matching code for types that can be indexed with [].
     ##
     ## Example:
@@ -52,7 +52,7 @@ macro matchPattern*(data: untyped, tokens: varargs[untyped]): untyped =
 
     var expression: NimNode = ident("true")
 
-    var idx = 0
+    var idx = offset
     for token in tokens:
         # Arguments with _ are wildcards
         if isNodeWildcard(token):
