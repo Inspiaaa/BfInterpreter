@@ -3,7 +3,7 @@
 
 type
     InstrKind* = enum
-        # Default: Used to avoid errors when doing pattern matching at the end of the instruction string
+        # Default: Used to avoid errors when doing pattern matching at the end of the instruction string.
         opNone,
 
         # Standard instructions
@@ -33,7 +33,7 @@ type
         opMulAdd,  # [->+++<] ...
         opMulSub,  # [->---<] ...
 
-        # Adds / subtracts a certain amount to (/from) a different cell
+        # Adds / subtracts a certain amount to (/from) a different cell.
         opAddAtOffset,  # >>>+ or >>+++ ...
         opSubAtOffset,  # >>>- or >>--- ...
 
@@ -49,21 +49,27 @@ type
             sub*: uint8
         of opMove:
             move*: int
+
         of opLoopStart:
             endPos*: int
         of opLoopEnd:
             startPos*: int
+
         of opRead, opWrite, opClear: discard
+
         of opScan:
             scanStep*: int
+
         of opCopyAdd:
             copyAddOffset*: int
         of opCopySub:
             copySubOffset*: int
+
         of opMulAdd:
             mulAddOffset*: ValueWithOffset
         of opMulSub:
             mulSubOffset*: ValueWithOffset
+
         of opAddAtOffset:
             addAtOffset*: ValueWithOffset
         of opSubAtOffset:
@@ -89,6 +95,20 @@ proc `==`*(a: Instr, b: Instr): bool =
         return a.startPos == b.startPos
     of opLoopEnd:
         return a.endPos == b.endPos
+    of opScan:
+        return a.scanStep == b.scanStep
+    of opCopyAdd:
+        return a.copyAddOffset == b.copyAddOffset
+    of opCopySub:
+        return a.copySubOffset == b.copySubOffset
+    of opMulAdd:
+        return a.mulAddOffset[] == b.mulAddOffset[]
+    of opMulSub:
+        return a.mulSubOffset[] == b.mulSubOffset[]
+    of opAddAtOffset:
+        return a.addAtOffset[] == b.addAtOffset[]
+    of opSubAtOffset:
+        return a.subAtOffset[] == b.subAtOffset[]
     else:
         return true
 
