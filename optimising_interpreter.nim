@@ -56,11 +56,6 @@ proc parse*(code: string): seq[Instr] =
         of '<':
             result.add(Instr(kind: opMove, move: -(1 + count('<'))))
         of '[':
-            # [-] and [+] are clear commands
-            # if (peek(0) == '-' or peek(0) == '+') and peek(1) == ']':
-            #     result.add(Instr(kind: opClear))
-            #     idx += 2
-            # else:
             result.add(Instr(kind: opLoopStart))
         of ']':
             result.add(Instr(kind: opLoopEnd))
@@ -103,11 +98,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         extendTapeIfNecessary(targetPos)
         tape[targetPos]
 
-    var instructionsExecuted = 0
-    let startTime = epochTime()
-
     while codePos < len(code):
-        inc instructionsExecuted
         {.push overflowchecks: off.}
         let instr = code[codePos]
 
@@ -176,11 +167,6 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
         inc codePos
         {.pop.}
-
-    let elapsedTime = epochTime() - startTime
-    echo()
-    echo "Instructions executed: ", instructionsExecuted
-    echo "Instructions per second: ", float(instructionsExecuted) / elapsedTime
 
 
 type PatternReplacement* = tuple[matchLen: int, pattern: seq[Instr]]
