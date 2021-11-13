@@ -4,6 +4,8 @@ import ./ir
 import ./seqview
 import ./pattern_matching
 
+import times
+
 
 # 3.63s for mandelbrot
 
@@ -101,9 +103,11 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         extendTapeIfNecessary(targetPos)
         tape[targetPos]
 
-    var mulFactor: uint8 = 0
+    var instructionsExecuted = 0
+    let startTime = epochTime()
 
     while codePos < len(code):
+        inc instructionsExecuted
         {.push overflowchecks: off.}
         let instr = code[codePos]
 
@@ -155,14 +159,11 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         of opCopySub:
             safeAccess(tapePos + instr.copySubOffset) -= tape[tapePos]
 
-        of opSetupMul:
-            mulFactor = instr.mul
-
         of opMulAdd:
-            safeAccess(tapePos + instr.mulAddOffset) += tape[tapePos] * mulFactor
+            safeAccess(tapePos + instr.mulAddOffset.tape) += tape[tapePos] * instr.mulAddOffset.cell
 
         of opMulSub:
-            safeAccess(tapePos + instr.mulSubOffset) -= tape[tapePos] * mulFactor
+            safeAccess(tapePos + instr.mulSubOffset.tape) -= tape[tapePos] * instr.mulAddOffset.cell
 
         of opAddAtOffset:
             safeAccess(tapePos + instr.addAtOffset.tape) += instr.addAtOffset.cell
@@ -175,6 +176,11 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
         inc codePos
         {.pop.}
+
+    let elapsedTime = epochTime() - startTime
+    echo()
+    echo "Instructions executed: ", instructionsExecuted
+    echo "Instructions per second: ", float(instructionsExecuted) / elapsedTime
 
 
 type PatternReplacement* = tuple[matchLen: int, pattern: seq[Instr]]
@@ -301,9 +307,10 @@ proc optimiseMultiMul*(s: SeqView[Instr]): PatternReplacement =
 
     var replacement: seq[Instr]
 
-    template setupMul(factor: uint8) = replacement.add(Instr(kind: opSetupMul, mul: factor))
-    template mulAdd(offset: int) = replacement.add(Instr(kind: opMulAdd, mulAddOffset: offset))
-    template mulSub(offset: int) = replacement.add(Instr(kind: opMulSub, mulSubOffset: offset))
+    template mulAdd(offset: int, factor: uint8) =
+        replacement.add(Instr(kind: opMulAdd, mulAddOffset: ValueWithOffset(cell: factor, tape: offset)))
+    template mulSub(offset: int, factor: uint8) =
+        replacement.add(Instr(kind: opMulSub, mulSubOffset: ValueWithOffset(cell: factor, tape: offset)))
     template copyAdd(offset: int) = replacement.add(Instr(kind: opCopyAdd, copyAddOffset: offset))
     template copySub(offset: int) = replacement.add(Instr(kind: opCopySub, copySubOffset: offset))
 
@@ -317,14 +324,12 @@ proc optimiseMultiMul*(s: SeqView[Instr]): PatternReplacement =
             if instr.add == 1:
                 copyAdd(moveSum)
             else:
-                setupMul(instr.add)
-                mulAdd(moveSum)
+                mulAdd(moveSum, instr.add)
         of opSub:
             if instr.sub == 1:
                 copySub(moveSum)
             else:
-                setupMul(instr.sub)
-                mulSub(moveSum)
+                mulSub(moveSum, instr.sub)
         of opMove:
             moveSum += instr.move
         else:
@@ -339,6 +344,10 @@ proc optimiseMultiMul*(s: SeqView[Instr]): PatternReplacement =
 
 proc optimiseLazyMoves*(s: SeqView[Instr]): PatternReplacement =
     ## Only moves the tape pointer after doing multiple operations.
+    ##
+    ## E.g.
+    ## >>+<+>>>+
+    ## => Add 1 at offset 2, Add 1 at offset 1, Add one at offset 4, Move pointer to 4
 
     var replacement: seq[Instr]
     var moveSum = 0
@@ -362,5 +371,6 @@ proc optimiseLazyMoves*(s: SeqView[Instr]): PatternReplacement =
         inc idx
 
     if len(replacement) >= 2:
-        replacement.add(Instr(kind: opMove, move: moveSum))
+        if moveSum != 0:
+            replacement.add(Instr(kind: opMove, move: moveSum))
         return (idx, replacement)
