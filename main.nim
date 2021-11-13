@@ -3,7 +3,7 @@ import std/macros
 import std/streams
 import times
 
-import ./optimising_interpreter
+import ./optimizing_interpreter
 
 
 macro timeit(code: untyped): untyped =
