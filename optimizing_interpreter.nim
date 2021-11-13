@@ -7,9 +7,6 @@ import ./optimization
 # 3.63s for mandelbrot
 
 
-echo "Size of instr: ", sizeof(Instr)
-
-
 proc sanitizeCode(code: string): string =
     ## Removes characters that are not instructions
 
