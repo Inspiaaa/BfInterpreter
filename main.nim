@@ -16,23 +16,13 @@ macro timeit(code: untyped): untyped =
             echo "Time: ", elapsedTime
 
 
-var instructions = parse(readFile("bf/mandelbrot.bf"))
-# var instructions = parse(readFile("bf/hanoi.bf"))
-# var instructions = parse("+++[->+++>>>---<<<<].>.>.>.>.>")
+let code = readFile("bf/mandelbrot.bf")
+var instructions = parse(code)
+instructions = optimize(instructions)
+addJumpInformation(instructions)
 
-timeit:
-    let replacements: seq[Replacer] = @[
-        Replacer(optimiseClear),
-        Replacer(optimiseScan),
-        Replacer(optimiseMove),
-        Replacer(optimiseMultiMul),
-        Replacer(optimiseLazyMoves)
-    ]
-    instructions = optimise(instructions, replacements)
-    addJumpInformation(instructions)
-
-for i in instructions[0..min(50, len(instructions)-1)]:
-    echo i
+# for i in instructions[0..min(50, len(instructions)-1)]:
+#     echo i
 
 timeit:
     run(instructions, newStringStream("10"), newFileStream(stdout))
