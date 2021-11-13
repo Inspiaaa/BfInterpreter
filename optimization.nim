@@ -3,8 +3,9 @@ import ./seqview
 import ./pattern_matching
 import ./ir
 
-type PatternReplacement* = tuple[matchLen: int, pattern: seq[Instr]]
-type Replacer* = proc (s: SeqView[Instr]): PatternReplacement {.closure.}
+type
+    PatternReplacement* = tuple[matchLen: int, pattern: seq[Instr]]
+    Replacer* = proc (s: SeqView[Instr]): PatternReplacement {.closure.}
 
 
 proc optimize*(

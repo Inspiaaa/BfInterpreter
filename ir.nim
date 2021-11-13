@@ -4,22 +4,38 @@
 type
     InstrKind* = enum
         # Default: Used to avoid errors when doing pattern matching at the end of the instruction string
-        opNone
-        opAdd,
-        opSub,
-        opMove,
-        opLoopStart,
-        opLoopEnd,
-        opRead,
-        opWrite,
-        opClear,
-        opScan,  # Moves to the next empty (0) cell to the right / left by jumping certain increments
-        opCopyAdd,  # Adds the current cell value to another cell
-        opCopySub,  # Subtracts ...
-        opMulAdd,  # Adds the current cell times the value stored multiplication factor to another cell
-        opAddAtOffset,
-        opSubAtOffset,
-        opMulSub
+        opNone,
+
+        # Standard instructions
+
+        opAdd,   # + or +++ ...
+        opSub,   # - or -- ...
+        opMove,  # > or <
+
+        opLoopStart,  # [
+        opLoopEnd,    # ]
+
+        opWrite,  # .
+        opRead,   # ,
+
+        # Advanced instructions
+
+        opClear,  # [-]: Clears the current cell.
+
+        # Moves to the next empty (0) cell to the right / left by jumping certain increments.
+        opScan,  # [>] or [<] or [>>>] or ...
+
+        # Adds / subtracts the current cell value to (/from) another cell.
+        opCopyAdd,  # [->+<] or [->>+++<<] ...
+        opCopySub,  # [->-<] or [->>---<<] ...
+
+        # Adds / subtracts the current cell times the value stored multiplication factor to another cell.
+        opMulAdd,  # [->+++<] ...
+        opMulSub,  # [->---<] ...
+
+        # Adds / subtracts a certain amount to (/from) a different cell
+        opAddAtOffset,  # >>>+ or >>+++ ...
+        opSubAtOffset,  # >>>- or >>--- ...
 
     ValueWithOffset* = ref object
         cell*: uint8
