@@ -21,6 +21,7 @@ type
         # Advanced instructions
 
         opClear,  # [-]: Clears the current cell.
+        opSet,    # [-]++ or [-]- ...: Sets the current cell to a certain value.
 
         # Moves to the next empty (0) cell to the right / left by jumping certain increments.
         opScan,  # [>] or [<] or [>>>] or ...
@@ -56,6 +57,8 @@ type
             startPos*: int
 
         of opRead, opWrite, opClear: discard
+        of opSet:
+            setValue*: uint8
 
         of opScan:
             scanStep*: int
@@ -74,7 +77,9 @@ type
             addAtOffset*: ValueWithOffset
         of opSubAtOffset:
             subAtOffset*: ValueWithOffset
-        of opNone: discard
+
+        of opNone:
+            discard
 
 
 proc `==`*(a: Instr, kind: InstrKind): bool =
@@ -109,6 +114,8 @@ proc `==`*(a: Instr, b: Instr): bool =
         return a.addAtOffset[] == b.addAtOffset[]
     of opSubAtOffset:
         return a.subAtOffset[] == b.subAtOffset[]
+    of opSet:
+        return a.setValue == b.setValue
     else:
         return true
 

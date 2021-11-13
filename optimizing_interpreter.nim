@@ -159,6 +159,9 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         of opSubAtOffset:
             safeAccess(tapePos + instr.subAtOffset.tape) -= instr.subAtOffset.cell
 
+        of opSet:
+            tape[tapePos] = instr.setValue
+
         of opNone:
             discard
 

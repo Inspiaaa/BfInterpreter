@@ -42,6 +42,14 @@ proc optimizeClear*(s: SeqView[Instr]): PatternReplacement =
             opLoopStart,
             Instr(kind: opAdd, add: 1) or Instr(kind: opSub, sub: 1),
             opLoopEnd):
+
+        # If a value is added to this cell directly after a clear, simply just set the current cell value
+        # to the new added / subtracted value.
+        # E.g. [-]+++ = Set current cell to 3
+        let incr = s[3]
+        if incr == opAdd or incr == opSub:
+            let value: uint8 = (if incr == opAdd: incr.add else: 0 - incr.sub)
+            return (4, @[Instr(kind: opSet, setValue: value)])
         return (3, @[Instr(kind: opClear)])
 
 
