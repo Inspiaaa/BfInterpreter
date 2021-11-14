@@ -1,5 +1,4 @@
 
-import times
 import std/streams
 
 
@@ -23,7 +22,7 @@ proc createJumpTable(code: string): seq[int] =
     return jumpTable
 
 
-proc run(code: string; input, output: Stream) =
+proc run*(code: string; input, output: Stream) =
     var tape: seq[uint8] = @[0u8]
     let jumpTable: seq[int] = createJumpTable(code)
 
@@ -65,11 +64,3 @@ proc run(code: string; input, output: Stream) =
 
         else: discard
         inc codePos
-
-
-let code: string = readFile("bf/mandelbrot.bf")
-let startTime = epochTime()
-run(code, newStringStream("Hello"), newFileStream(stdout))
-let elapsedTime = epochTime() - startTime
-echo()
-echo "Time: ", elapsedTime

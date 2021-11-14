@@ -4,6 +4,7 @@ import std/terminal
 import cligen
 
 import ./optimizing_interpreter
+import ./naive_interpreter
 
 
 proc cli(
@@ -29,7 +30,10 @@ proc cli(
         if len(output) > 0: newFileStream(output, fmWrite)
         else: newFileStream(stdout))
 
-    run(code, inputStream, outputStream, opt=not noOpt)
+    if noOpt:
+        naive_interpreter.run(code, inputStream, outputStream)
+    else:
+        optimizing_interpreter.run(code, inputStream, outputStream)
 
 
 dispatch(cli)
