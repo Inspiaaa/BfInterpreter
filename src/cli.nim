@@ -36,4 +36,13 @@ proc cli(
         optimizing_interpreter.run(code, inputStream, outputStream)
 
 
-dispatch(cli)
+dispatch(
+    cli,
+    help = {
+        "file": "Path to the file with the BF code",
+        "code": "Directly enter BF code as a string",
+        "noOpt": "Flag to disable optimizations",
+        "input": "Path to the input data; Uses stdin if none specified",
+        "output": "Path to the output file; Uses stdout if none specified"
+    }
+)
