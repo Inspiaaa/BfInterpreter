@@ -7,7 +7,7 @@ import ./optimizing_interpreter
 import ./naive_interpreter
 
 
-proc cli(
+proc bfi(
         file: string = "",
         code: string = "",
         noOpt: bool = false,
@@ -22,6 +22,7 @@ proc cli(
         if len(file) > 0: readFile(file)
         else: code)
 
+    # TODO: If input is not a file, use it as a string stream.
     let inputStream = (
         if len(input) > 0: newFileStream(input, fmRead)
         else: newFileStream(stdin))
@@ -37,7 +38,7 @@ proc cli(
 
 
 dispatch(
-    cli,
+    bfi,
     help = {
         "file": "Path to the file with the BF code",
         "code": "Directly enter BF code as a string",
