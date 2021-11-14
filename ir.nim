@@ -1,5 +1,5 @@
 
-# Intermediate representation of the BrainFuck code
+# Intermediate representation of the BF code
 
 type
     InstrKind* = enum

@@ -1,5 +1,7 @@
 
 import std/streams
+import std/terminal
+import cligen
 
 import ./optimizing_interpreter
 
@@ -12,7 +14,8 @@ proc cli(
         output: string = "") =
 
     if len(file) > 0 and len(code) > 0:
-        raise newException(ValueError, "Either set file or code, not both.")
+        stdout.styledWriteLine(fgRed, "CLI Error: Either set file (-f) or code (-c), not both.")
+        return
 
     let code: string = (
         if len(file) > 0: readFile(file)
@@ -29,5 +32,4 @@ proc cli(
     run(code, inputStream, outputStream, opt=not noOpt)
 
 
-import cligen
 dispatch(cli)

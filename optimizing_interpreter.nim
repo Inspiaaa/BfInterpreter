@@ -22,7 +22,7 @@ proc sanitizeCode(code: string): string =
 
 
 proc parse*(code: string): seq[Instr] =
-    ## Converts a string brainfuck code into sequence of instructions.
+    ## Converts a string BF code into sequence of instructions.
     ## Performs the first optimisation: Grouping of Move and Add / Subtract instructions.
 
     let code = sanitizeCode(code)
