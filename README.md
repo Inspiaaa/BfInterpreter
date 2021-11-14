@@ -23,7 +23,7 @@ Options:
 
 ### CLI Examples:
 
-```
+```batch
 # Execute code from a file
 bfi -f examples/mandelbrot.bf
 
@@ -42,7 +42,7 @@ bfi -c "->+>>>+>>-[++++++[>+++++++++>+++++>+<<<-]<+]>>.>--.->++..>>+.>-[>.<<]>[>
 
 ### Compilation
 
-```
+```batch
 nimble install cligen
 nim c --out:bfi.exe -d:release -d:danger src/cli.nim 
 ```
