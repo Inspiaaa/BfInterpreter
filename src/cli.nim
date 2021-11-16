@@ -1,4 +1,5 @@
 
+from os import fileExists
 import std/streams
 import std/terminal
 import cligen
@@ -22,10 +23,9 @@ proc bfi(
         if len(file) > 0: readFile(file)
         else: code)
 
-    # TODO: If input is not a file, use it as a string stream.
     let inputStream = (
-        if len(input) > 0: newFileStream(input, fmRead)
-        else: newFileStream(stdin))
+        if fileExists(input): newFileStream(input, fmRead)
+        else: newStringStream(input))
 
     let outputStream = (
         if len(output) > 0: newFileStream(output, fmWrite)
