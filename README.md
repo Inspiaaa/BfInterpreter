@@ -84,7 +84,7 @@ This is also the fundamental idea of many BF optimisers: To reduce common patter
 
 For example, to increment the current cell by 4, in BF you'd write: `++++`. The optimised code is: `Add(4)` (One instruction, not four).
 
-#### Normal instructions
+### Normal instructions
 
 | Instruction | Meaning                                                             |
 | ----------- | ------------------------------------------------------------------- |
@@ -97,7 +97,7 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 | `.`         | Write the current block as an ASCII character.                      |
 | `,`         | Read one byte from the input stream into the current block.         |
 
-#### Expanded instruction set ([ir.nim](https://github.com/Inspiaaa/BfInterpreter/blob/master/src/ir.nim))
+### Expanded instruction set ([ir.nim](https://github.com/Inspiaaa/BfInterpreter/blob/master/src/ir.nim))
 
 | Instruction   | BF Example           | Meaning                                                                  |
 | ------------- | -------------------- | ------------------------------------------------------------------------ |
@@ -118,7 +118,7 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 | opAddAtOffset | `>>>+`, `<+++`       | Adds the current cell to another cell without changing the cell pointer. |
 | opSubAtOffset | `>>>-`, `<---`       | Subtracts ...                                                            |
 
-#### Optimisation phases
+### Optimisation phases
 
 1. **Parsing**
    
@@ -144,7 +144,7 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 
 
 
-#### Further reading
+## Further reading
 
 https://www.nayuki.io/page/optimizing-brainfuck-compiler
 
