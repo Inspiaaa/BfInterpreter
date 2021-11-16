@@ -78,7 +78,7 @@ run(instructions, newStringStream(""), newFileStream(stdout))
 
 This project executes BF code with an interpreter. 
 
-One of the tricks to increase the performance of an interpreted language is by interpreting less, i.e. spending less time interpreting instructions and more time actually doing something meaningful. Generally higher-level interpreted languages are faster than lower-level interpreted languages, as they can achieve the same result with fewer instructions, meaning that more of the functionality is implemented in the optimised interpreted code instead of emulated via instructions.
+One of the tricks to increase the performance of an interpreted language is by interpreting less, i.e. spending less time interpreting instructions and more time actually doing something meaningful. Generally higher-level interpreted languages are faster than lower-level interpreted languages, as they can achieve the same result with fewer instructions, meaning that more of the functionality is implemented in the optimised interpreter code instead of emulated via instructions.
 
 This is also the fundamental idea of many BF optimisers: To reduce common patterns to single instructions that are efficiently implemented in the underlying language, here: Nim.
 
@@ -142,7 +142,7 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 
 4. **Execution**
 
-
+---
 
 ## Further reading
 
@@ -151,5 +151,3 @@ https://www.nayuki.io/page/optimizing-brainfuck-compiler
 http://calmerthanyouare.org/2015/01/07/optimizing-brainfuck.html
 
 [Basics of BrainFuck · GitHub](https://gist.github.com/roachhd/dce54bec8ba55fb17d3a)
-
-
