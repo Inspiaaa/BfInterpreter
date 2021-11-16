@@ -122,7 +122,7 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 
 1. **Parsing**
    
-   Converts the string instructions into `Instr` objects. Already fuses multiple `+`,`-`, `>` and `<` instructions into one instruction (opAdd, opSub, and opMove, respectively). This makes subsequent the optimisation phase faster and simpler.
+   Converts the string instructions into `Instr` objects. Already fuses multiple `+`,`-`, `>` and `<` instructions into one instruction (opAdd, opSub, and opMove, respectively). This makes the subsequent optimisation phase faster and simpler.
 
 2. **Advanced optimisations**
    
