@@ -142,6 +142,44 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 
 4. **Execution**
 
+### Example
+
+Start of mandelbrot.bf (with comments):
+
+```
++++++++++++++                             # A
+[->++>>>+++++>++>+<<<<<<]                 # B
+>>>>>++++++>--->>>>>>>>>>+++++++++++++++  # C
+[[>>>>>>>>>]                              # D
+# ...
+```
+
+First 14 instructions of the optimised code:
+
+```
+# A
+(kind: opAdd, add: 13)
+
+# B
+(kind: opLoopStart, endPos: 7)
+(kind: opMulAdd, mulAddOffset: ...)
+(kind: opMulAdd, mulAddOffset: ...)
+(kind: opMulAdd, mulAddOffset: ...)
+(kind: opCopyAdd, copyAddOffset: 6)
+(kind: opClear)
+(kind: opLoopEnd, startPos: 1)
+
+# C
+(kind: opAddAtOffset, addAtOffset: ...)
+(kind: opSubAtOffset, subAtOffset: ...)
+(kind: opAddAtOffset, addAtOffset: ...)
+(kind: opMove, move: 16)
+
+# D
+(kind: opLoopStart, endPos: 18)
+(kind: opScan, scanStep: 9)
+```
+
 ---
 
 ## Further reading
