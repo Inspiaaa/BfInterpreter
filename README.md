@@ -78,7 +78,7 @@ run(instructions, newStringStream(""), newFileStream(stdout))
 
 This project executes BF code with an interpreter. 
 
-One of the tricks to increase the performance of an interpreted language is by interpreting less, i.e. spending less time interpreting instructions and more time actually doing something meaningful. Generally higher-level interpreted languages are faster than lower-level interpreted languages, as they can achieve the same result with fewer instructions, meaning that more of the functionality is implemented in the optimised interpreter code instead of emulated via instructions.
+One of the tricks to increase the performance of an interpreted language, is to interpret less, i.e. spending less time interpreting instructions and more time actually doing something meaningful. Generally higher-level interpreted languages are faster than lower-level interpreted languages, as they can achieve the same result with fewer instructions, meaning that more of the functionality is implemented in the optimised interpreter code instead of emulated via instructions.
 
 This is also the fundamental idea of many BF optimisers: To reduce common patterns to single instructions that are efficiently implemented in the underlying language, here: Nim.
 
