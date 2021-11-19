@@ -8,9 +8,9 @@ import ./src/optimizing_interpreter
 
 macro timeit(message: string, code: untyped): untyped =
     result = quote do:
-        let startTime = epochTime()
+        let startTime = cpuTime()
         `code`
-        let elapsedTime = epochTime() - startTime
+        let elapsedTime = cpuTime() - startTime
         echo()
         echo `message`, " ", elapsedTime, "s"
 
