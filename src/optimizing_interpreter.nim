@@ -79,14 +79,22 @@ proc addJumpInformation*(code: var seq[Instr]) =
 proc run*(code: seq[Instr]; input, output: Stream) =
     ## Executes a sequence of instructions.
 
-    var tape: seq[uint8] = @[0u8]
+    # var tape: seq[uint8] = @[0u8]
+    var tape = cast[ptr UncheckedArray[uint8]](alloc0(1 * sizeof(uint8)))
+    var tapeLen: Natural = 1
 
     var codePos: int = 0
     var tapePos: int = 0
 
     template extendTapeIfNecessary(targetLen: int) =
-        while targetLen >= len(tape):
-            tape.add(0)
+        while targetLen >= tapeLen:
+            tape = cast[ptr UncheckedArray[uint8]](
+                realloc0(
+                    cast[pointer](tape),
+                    tapeLen * sizeof(uint8),
+                    tapeLen * sizeof(uint8) * 2)
+                )
+            tapeLen *= 2
 
     template safeAccess(targetPos: int): untyped =
         extendTapeIfNecessary(targetPos)
@@ -164,6 +172,8 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
         inc codePos
         {.pop.}
+
+    dealloc(tape)
 
 
 proc optimize*(code: seq[Instr]): seq[Instr] =
