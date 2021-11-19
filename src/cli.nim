@@ -6,6 +6,7 @@ import cligen
 
 import ./optimizing_interpreter
 import ./naive_interpreter
+import ./silent_stream
 
 
 template getCode(file: string, code: string): string =
@@ -35,7 +36,7 @@ proc r(
         else: newStringStream(input))
 
     let outputStream = (
-        if silent: newStringStream("")
+        if silent: newSilentStream()
         else: (
             if len(output) > 0: newFileStream(output, fmWrite)
             else: newFileStream(stdout)
