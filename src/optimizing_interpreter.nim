@@ -4,9 +4,6 @@ import ./ir
 import ./optimization
 
 
-# 3.63s for mandelbrot
-
-
 proc sanitizeCode(code: string): string =
     ## Removes characters that are not instructions
 
@@ -78,39 +75,17 @@ proc addJumpInformation*(code: var seq[Instr]) =
             code[idx].startPos = openBracket
 
 
-type Tape = ptr UncheckedArray[uint8]
-
-proc newTape(capacity = 1): Tape {.inline.} =
-    cast[Tape](alloc0(1 * sizeof(uint8)))
-
-proc growTape(tape: Tape, tapeLen: var int): Tape {.inline.} =
-    let oldLen = tapeLen
-    tapeLen *= 2
-    cast[Tape](
-        realloc0(
-            cast[pointer](tape),
-            oldLen * sizeof(uint8),
-            tapeLen * sizeof(uint8)
-        )
-    )
-
-proc destroyTape(tape: Tape) {.inline.} =
-    dealloc tape
-
-
-proc run*(code: seq[Instr]; input, output: Stream, tape: Tape) =
+proc run*(code: seq[Instr]; input, output: Stream) =
     ## Executes a sequence of instructions.
 
-    # var tape: seq[uint8] = @[0u8]
-    var tape = tape
-    var tapeLen: Natural = 1
+    var tape: seq[uint8] = @[0u8]
 
     var codePos: int = 0
     var tapePos: int = 0
 
-    template extendTapeIfNecessary(targetLen: int) =
-        while targetLen >= tapeLen:
-            tape = growTape(tape, tapeLen)
+    template extendTapeIfNecessary(targetPos: int) =
+        while len(tape) <= targetPos:
+            tape.add(0)
 
     template safeAccess(targetPos: int): untyped =
         extendTapeIfNecessary(targetPos)
@@ -190,21 +165,12 @@ proc run*(code: seq[Instr]; input, output: Stream, tape: Tape) =
         {.pop.}
 
 
-proc run*(code: seq[Instr], input, output: Stream) =
-    var tape = newTape()
-    try:
-        run(code, input, output, tape)
-    finally:
-        destroyTape(tape)
-
-
 proc optimize*(code: seq[Instr]): seq[Instr] =
     optimization.optimize(code, allOptimizers)
 
 
-proc run*(code: string; input, output: Stream, opt: bool = true) =
+proc run*(code: string; input, output: Stream) =
     var instructions = parse(code)
-    if opt:
-        instructions = optimize(instructions)
+    instructions = optimize(instructions)
     addJumpInformation(instructions)
     run(instructions, input, output)
