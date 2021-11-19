@@ -24,7 +24,8 @@ proc r(
         code: string = "",
         noOpt: bool = false,
         input: string = "",
-        output: string = "") =
+        output: string = "",
+        silent: bool = false) =
     ## Runs the interpreter.
 
     let code = getCode(file, code)
@@ -34,8 +35,12 @@ proc r(
         else: newStringStream(input))
 
     let outputStream = (
-        if len(output) > 0: newFileStream(output, fmWrite)
-        else: newFileStream(stdout))
+        if silent: newStringStream("")
+        else: (
+            if len(output) > 0: newFileStream(output, fmWrite)
+            else: newFileStream(stdout)
+        )
+    )
 
     if noOpt:
         naive_interpreter.run(code, inputStream, outputStream)
@@ -72,7 +77,8 @@ dispatchMulti(
             "code": "Directly enter BF code as a string",
             "noOpt": "Flag to disable optimizations",
             "input": "Path to the input data; Uses stdin if none specified",
-            "output": "Path to the output file; Uses stdout if none specified"
+            "output": "Path to the output file; Uses stdout if none specified",
+            "silent": "Flag that, when provided, prevents the interpreter from outputting any text",
         }
     ],
     [

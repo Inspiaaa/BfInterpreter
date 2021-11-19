@@ -23,6 +23,7 @@ Options:
   -n, --noOpt     bool    false  Flag to disable optimizations
   -i=, --input=   string  ""     Path to the input data; Uses stdin if none specified
   -o=, --output=  string  ""     Path to the output file; Uses stdout if none specified
+  -s, --silent    bool    false  Flag that, when provided, prevents the interpreter from outputting any text
 
 Usage:
   bfi inspect [optional-params]
@@ -51,6 +52,9 @@ bfi r -f examples/mandelbrot.bf --noOpt
 
 # Execute a string directly, prints "Hello World!"
 bfi r -c "->+>>>+>>-[++++++[>+++++++++>+++++>+<<<-]<+]>>.>--.->++..>>+.>-[>.<<]>[>]<<+."
+
+# Silent: Prevents the program from outputting any text, useful for benchmarking
+bfi r -f examples/hanoi.bf -s
 
 
 # Prints the instructions of the optimized code in the console.
