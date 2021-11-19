@@ -220,7 +220,7 @@ Runs the interpreter in silent mode, i.e. doesn't print anything to the console.
 
 | Input program     | Unoptimised Time / s | Optimised Time / s |
 | ----------------- | -------------------- | ------------------ |
-| **mandelbrot.bf** | 15.001               | **3.216**          |
+| **mandelbrot.bf** | 15.001               | **3.152**          |
 | **hanoi.bf**      | 9.069                | **0.146**          |
 
 ---
