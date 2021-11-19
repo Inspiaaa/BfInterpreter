@@ -76,11 +76,31 @@ proc addJumpInformation*(code: var seq[Instr]) =
             code[idx].startPos = openBracket
 
 
-proc run*(code: seq[Instr]; input, output: Stream) =
+type Tape = ptr UncheckedArray[uint8]
+
+proc newTape(capacity = 1): Tape {.inline.} =
+    cast[Tape](alloc0(1 * sizeof(uint8)))
+
+proc growTape(tape: Tape, tapeLen: var int): Tape {.inline.} =
+    let oldLen = tapeLen
+    tapeLen *= 2
+    cast[Tape](
+        realloc0(
+            cast[pointer](tape),
+            oldLen * sizeof(uint8),
+            tapeLen * sizeof(uint8)
+        )
+    )
+
+proc destroyTape(tape: Tape) {.inline.} =
+    dealloc tape
+
+
+proc run*(code: seq[Instr]; input, output: Stream, tape: Tape) =
     ## Executes a sequence of instructions.
 
     # var tape: seq[uint8] = @[0u8]
-    var tape = cast[ptr UncheckedArray[uint8]](alloc0(1 * sizeof(uint8)))
+    var tape = tape
     var tapeLen: Natural = 1
 
     var codePos: int = 0
@@ -88,13 +108,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
     template extendTapeIfNecessary(targetLen: int) =
         while targetLen >= tapeLen:
-            tape = cast[ptr UncheckedArray[uint8]](
-                realloc0(
-                    cast[pointer](tape),
-                    tapeLen * sizeof(uint8),
-                    tapeLen * sizeof(uint8) * 2)
-                )
-            tapeLen *= 2
+            tape = growTape(tape, tapeLen)
 
     template safeAccess(targetPos: int): untyped =
         extendTapeIfNecessary(targetPos)
@@ -173,7 +187,13 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         inc codePos
         {.pop.}
 
-    dealloc(tape)
+
+proc run*(code: seq[Instr], input, output: Stream) =
+    var tape = newTape()
+    try:
+        run(code, input, output, tape)
+    finally:
+        destroyTape(tape)
 
 
 proc optimize*(code: seq[Instr]): seq[Instr] =
