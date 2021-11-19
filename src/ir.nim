@@ -4,7 +4,7 @@
 type
     InstrKind* = enum
         # Default: Used to avoid errors when doing pattern matching at the end of the instruction string.
-        opNone,
+        opEnd,
 
         # Standard instructions
 
@@ -78,7 +78,7 @@ type
         of opSubAtOffset:
             subAtOffset*: ValueWithOffset
 
-        of opNone:
+        of opEnd:
             discard
 
 

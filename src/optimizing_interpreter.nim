@@ -59,6 +59,8 @@ proc parse*(code: string): seq[Instr] =
             result.add(Instr(kind: opWrite))
         else: discard
 
+    result.add(Instr(kind: opEnd))
+
 
 proc addJumpInformation*(code: var seq[Instr]) =
     ## Adds the target jump location of each '[' and ']' instruction.
@@ -114,7 +116,7 @@ proc run*(code: seq[Instr]; input, output: Stream, tape: Tape) =
         extendTapeIfNecessary(targetPos)
         tape[targetPos]
 
-    while codePos < len(code):
+    while true:
         {.push overflowchecks: off.}
         let instr = code[codePos]
 
@@ -181,8 +183,8 @@ proc run*(code: seq[Instr]; input, output: Stream, tape: Tape) =
         of opSet:
             tape[tapePos] = instr.setValue
 
-        of opNone:
-            discard
+        of opEnd:
+            break
 
         inc codePos
         {.pop.}

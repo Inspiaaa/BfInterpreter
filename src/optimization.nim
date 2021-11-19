@@ -90,7 +90,7 @@ proc optimizeMove*(s: SeqView[Instr]): PatternReplacement =
     if increment == opSub:
         copyInstr = Instr(kind: opCopySub, copySubOffset: moveA.move)
 
-    if copyInstr == opNone:
+    if copyInstr == opEnd:
         return
 
     return (6, @[loopStart, copyInstr, Instr(kind: opClear), loopEnd])
