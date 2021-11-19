@@ -5,7 +5,7 @@ import ./ir
 
 type
     PatternReplacement* = tuple[matchLen: int, pattern: seq[Instr]]
-    Replacer* = proc (s: SeqView[Instr]): PatternReplacement {.closure.}
+    Replacer* = proc (s: SeqView[Instr]): PatternReplacement
 
 
 proc optimize*(
