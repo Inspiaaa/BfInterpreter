@@ -46,7 +46,6 @@ macro benchmark(name: string, count: int = 5, code: untyped): untyped =
             `code`
             let elapsedTime = cpuTime() - startTime
             times.add(elapsedTime)
-            echo elapsedTime
 
         echo()
         echo `name`
@@ -67,7 +66,7 @@ let hanoi = readFile("examples/hanoi.bf")
 let mandelbrot = readFile("examples/mandelbrot.bf")
 
 
-benchmark "Hanoi", 20:
+benchmark "Hanoi":
     var stream = newSilentStream()
     optimizing_interpreter.run(hanoi, newStringStream(""), stream)
 
