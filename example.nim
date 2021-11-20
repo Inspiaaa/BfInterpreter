@@ -27,4 +27,4 @@ timeit "Parse time:":
 #     echo i
 
 timeit "Execution time:":
-    run(instructions, newStringStream("10"), newFileStream(stdout))
+    run(instructions, newStringStream("Input here"), newFileStream(stdout))
