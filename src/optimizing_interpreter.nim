@@ -4,6 +4,70 @@ import ./ir
 import ./optimization
 
 
+type SeqTape {.borrow: `.`.} = distinct seq[uint8]
+
+proc add(self: var SeqTape, value: uint8) {.borrow.}
+proc len(self: SeqTape): int {.borrow.}
+
+proc init(self: var SeqTape) =
+    self.add(0'u8)
+
+template extendIfNecessary(self: SeqTape, targetPos: int) =
+    while len(self) <= targetPos:
+            self.add(0)
+
+template safeAccess(self: SeqTape, targetPos: int): untyped =
+    self.extendIfNecessary(targetPos)
+    self[targetPos]
+
+template `[]=`(self: SeqTape, index: int, value: uint8): untyped =
+    seq[uint8](self)[index] = value
+
+template `[]`(self: SeqTape, index: int): untyped =
+    seq[uint8](self)[index]
+
+
+type ArrayTape = object
+    data: array[30000, uint8]
+
+proc init(self: var ArrayTape) =
+    discard
+
+template extendIfNecessary(self: ArrayTape, targetPos: int) =
+    discard
+
+template safeAccess(self: ArrayTape, targetPos: int): untyped =
+    self[targetPos]
+
+template `[]=`(self: ArrayTape, index: int, value: uint8): untyped =
+    self.data[index] = value
+
+template `[]`(self: ArrayTape, index: int): untyped =
+    self.data[index]
+
+
+type UncheckedArrayTape = object
+    data: ptr UncheckedArray[uint8]
+
+proc init(self: var UncheckedArrayTape) =
+    self.data = cast[ptr UncheckedArray[uint8]](alloc0(30000))
+
+proc `=destroy`(self: var UncheckedArrayTape) =
+    dealloc(self.data)
+
+template extendIfNecessary(self: UncheckedArrayTape, targetPos: int) =
+    discard
+
+template safeAccess(self: UncheckedArrayTape, targetPos: int): untyped =
+    self.data[targetPos]
+
+template `[]=`(self: UncheckedArrayTape, index: int, value: uint8): untyped =
+    self.data[index] = value
+
+template `[]`(self: UncheckedArrayTape, index: int): untyped =
+    self.data[index]
+
+
 proc sanitizeCode(code: string): string =
     ## Removes characters that are not instructions
 
@@ -75,21 +139,18 @@ proc addJumpInformation*(code: var seq[Instr]) =
             code[idx].startPos = openBracket
 
 
-proc run*(code: seq[Instr]; input, output: Stream) =
+proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
     ## Executes a sequence of instructions.
-
-    var tape: seq[uint8] = @[0u8]
+    ##
+    ## Tape needs to support the following operations
+    ## - tape.extendIfNecessary(targetPos: int)
+    ## - tape[idx: int] -> uint8
+    ## - tape[idx: int] = uint8
+    ## - tape.safeAccess(idx: int) -> uint8
+    ## - tape.safeAccess(idx: int) = uint8(20)
 
     var codePos: int = 0
     var tapePos: int = 0
-
-    template extendTapeIfNecessary(targetPos: int) =
-        while len(tape) <= targetPos:
-            tape.add(0)
-
-    template safeAccess(targetPos: int): untyped =
-        extendTapeIfNecessary(targetPos)
-        tape[targetPos]
 
     while true:
         {.push overflowchecks: off.}
@@ -107,7 +168,7 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
         of opMove:
             tapePos += instr.move
-            extendTapeIfNecessary(tapePos)
+            tape.extendIfNecessary(tapePos)
 
         of opWrite:
             output.write char(tape[tapePos])
@@ -135,25 +196,25 @@ proc run*(code: seq[Instr]; input, output: Stream) =
         of opScan:
             while tape[tapePos] != 0:
                 tapePos += instr.scanStep
-                extendTapeIfNecessary(tapePos)
+                tape.extendIfNecessary(tapePos)
 
         of opCopyAdd:
-            safeAccess(tapePos + instr.copyAddOffset) += tape[tapePos]
+            tape.safeAccess(tapePos + instr.copyAddOffset) += tape[tapePos]
 
         of opCopySub:
-            safeAccess(tapePos + instr.copySubOffset) -= tape[tapePos]
+            tape.safeAccess(tapePos + instr.copySubOffset) -= tape[tapePos]
 
         of opMulAdd:
-            safeAccess(tapePos + instr.mulAddOffset.tape) += tape[tapePos] * instr.mulAddOffset.cell
+            tape.safeAccess(tapePos + instr.mulAddOffset.tape) += tape[tapePos] * instr.mulAddOffset.cell
 
         of opMulSub:
-            safeAccess(tapePos + instr.mulSubOffset.tape) -= tape[tapePos] * instr.mulAddOffset.cell
+            tape.safeAccess(tapePos + instr.mulSubOffset.tape) -= tape[tapePos] * instr.mulAddOffset.cell
 
         of opAddAtOffset:
-            safeAccess(tapePos + instr.addAtOffset.tape) += instr.addAtOffset.cell
+            tape.safeAccess(tapePos + instr.addAtOffset.tape) += instr.addAtOffset.cell
 
         of opSubAtOffset:
-            safeAccess(tapePos + instr.subAtOffset.tape) -= instr.subAtOffset.cell
+            tape.safeAccess(tapePos + instr.subAtOffset.tape) -= instr.subAtOffset.cell
 
         of opSet:
             tape[tapePos] = instr.setValue
@@ -163,6 +224,15 @@ proc run*(code: seq[Instr]; input, output: Stream) =
 
         inc codePos
         {.pop.}
+
+
+proc run*(code: seq[Instr], input, output: Stream) =
+    # var tape: SeqTape
+    # init(tape)
+    # run[SeqTape](code, tape, input, output)
+    var tape: UncheckedArrayTape
+    init(tape)
+    run[UncheckedArrayTape](code, tape, input, output)
 
 
 proc optimize*(code: seq[Instr]): seq[Instr] =
