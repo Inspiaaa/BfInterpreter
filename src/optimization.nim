@@ -40,7 +40,7 @@ proc optimizeClear*(s: SeqView[Instr]): PatternReplacement =
     # Optimizes [-] and [+] to a single opClear instruction
     if matchPattern(s,
             opLoopStart,
-            Instr(kind: opAdd, add: 1) or Instr(kind: opSub, sub: 1),
+            Instr(kind: opAdd, value: 1) or Instr(kind: opSub, value: 1),
             opLoopEnd):
 
         # If a value is added to this cell directly after a clear, simply just set the current cell value
@@ -48,15 +48,15 @@ proc optimizeClear*(s: SeqView[Instr]): PatternReplacement =
         # E.g. [-]+++ = Set current cell to 3
         let incr = s[3]
         if incr == opAdd or incr == opSub:
-            let value: uint8 = (if incr == opAdd: incr.add else: 0 - incr.sub)
-            return (4, @[Instr(kind: opSet, setValue: value)])
+            let value: uint8 = (if incr == opAdd: incr.value else: 0 - incr.value)
+            return (4, @[Instr(kind: opSet, value: value)])
         return (3, @[Instr(kind: opClear)])
 
 
 proc optimizeScan*(s: SeqView[Instr]): PatternReplacement =
     # Optimizes [>], [<], [>>>>], ... to a single opScan instruction
     if matchPattern(s, opLoopStart, opMove, opLoopEnd):
-        return (3, @[Instr(kind: opScan, scanStep: s[1].move)])
+        return (3, @[Instr(kind: opScan, pos: s[1].pos)])
 
 
 # Possible optimization for [+>+]: Invert the current cell and then do the usual optimize move optimization
@@ -70,7 +70,7 @@ proc optimizeMove*(s: SeqView[Instr]): PatternReplacement =
             opLoopStart,
             opSub,
             opMove,
-            Instr(kind: opSub, sub: 1) or Instr(kind: opAdd, add: 1),
+            Instr(kind: opSub, value: 1) or Instr(kind: opAdd, value: 1),
             opMove,
             opLoopEnd):
         return
@@ -81,14 +81,14 @@ proc optimizeMove*(s: SeqView[Instr]): PatternReplacement =
     let loopStart = s[0]
     let loopEnd = s[5]
 
-    if moveA.move != -moveB.move:
+    if moveA.pos != -moveB.pos:
         return
 
     var copyInstr: Instr
     if increment == opAdd:
-        copyInstr = Instr(kind: opCopyAdd, copyAddOffset: moveA.move)
+        copyInstr = Instr(kind: opCopyAdd, pos: moveA.pos)
     if increment == opSub:
-        copyInstr = Instr(kind: opCopySub, copySubOffset: moveA.move)
+        copyInstr = Instr(kind: opCopySub, pos: moveA.pos)
 
     if copyInstr == opEnd:
         return
@@ -104,12 +104,12 @@ proc getSimpleLoop(s: SeqView[Instr]): int =
     if s[0] != opLoopStart:
         return 0
 
-    var moveSum = 0
+    var moveSum: TPos = 0
     var idx = 1
     while true:
         let instr = s[idx]
         if instr == opMove:
-            moveSum += instr.move
+            moveSum += instr.pos
         elif not (instr == opAdd or instr == opSub):
             break
         inc idx
@@ -125,7 +125,7 @@ proc optimizeMultiMul*(s: SeqView[Instr]): PatternReplacement =
     ## E.g. [->+++<] (Add current cell * 3 to the cell to the right)
     ## => [ opClear, opStore, opMul ]
 
-    if not matchPattern(s, opLoopStart, Instr(kind: opSub, sub: 1)):
+    if not matchPattern(s, opLoopStart, Instr(kind: opSub, value: 1)):
         return
 
     let endIdx = getSimpleLoop(s) - 1
@@ -137,31 +137,31 @@ proc optimizeMultiMul*(s: SeqView[Instr]): PatternReplacement =
 
     var replacement: seq[Instr]
 
-    template mulAdd(offset: int, factor: uint8) =
-        replacement.add(Instr(kind: opMulAdd, mulAddOffset: ValueWithOffset(cell: factor, tape: offset)))
-    template mulSub(offset: int, factor: uint8) =
-        replacement.add(Instr(kind: opMulSub, mulSubOffset: ValueWithOffset(cell: factor, tape: offset)))
-    template copyAdd(offset: int) = replacement.add(Instr(kind: opCopyAdd, copyAddOffset: offset))
-    template copySub(offset: int) = replacement.add(Instr(kind: opCopySub, copySubOffset: offset))
+    template mulAdd(offset: TPos, factor: uint8) =
+        replacement.add(Instr(kind: opMulAdd, value: factor, pos: offset))
+    template mulSub(offset: TPos, factor: uint8) =
+        replacement.add(Instr(kind: opMulSub, value: factor, pos: offset))
+    template copyAdd(offset: TPos) = replacement.add(Instr(kind: opCopyAdd, pos: offset))
+    template copySub(offset: TPos) = replacement.add(Instr(kind: opCopySub, pos: offset))
 
     replacement.add(loopStart)
 
-    var moveSum = 0
+    var moveSum: TPos = 0
     # Skip the [-
     for instr in s[2..<endIdx]:
         case instr.kind
         of opAdd:
-            if instr.add == 1:
+            if instr.value == 1:
                 copyAdd(moveSum)
             else:
-                mulAdd(moveSum, instr.add)
+                mulAdd(moveSum, instr.value)
         of opSub:
-            if instr.sub == 1:
+            if instr.value == 1:
                 copySub(moveSum)
             else:
-                mulSub(moveSum, instr.sub)
+                mulSub(moveSum, instr.value)
         of opMove:
-            moveSum += instr.move
+            moveSum += instr.pos
         else:
             discard
         # TODO: Check that the source cell (i.e. moveSum == 0) is not modified!
@@ -180,29 +180,29 @@ proc optimizeLazyMoves*(s: SeqView[Instr]): PatternReplacement =
     ## => Add 1 at offset 2, Add 1 at offset 1, Add one at offset 4, Move pointer to 4
 
     var replacement: seq[Instr]
-    var moveSum = 0
+    var moveSum: TPos = 0
     var idx = 0
 
     while true:
         let instr = s[idx]
         case instr.kind
         of opMove:
-            moveSum += instr.move
+            moveSum += instr.pos
         of opAdd:
             replacement.add(Instr(
                 kind: opAddAtOffset,
-                addAtOffset: ValueWithOffset(cell: instr.add, tape: moveSum)))
+                value: instr.value, pos: moveSum))
         of opSub:
             replacement.add(Instr(
                 kind: opSubAtOffset,
-                subAtOffset: ValueWithOffset(cell: instr.sub, tape: moveSum)))
+                value: instr.value, pos: moveSum))
         else:
             break
         inc idx
 
     if len(replacement) >= 2:
         if moveSum != 0:
-            replacement.add(Instr(kind: opMove, move: moveSum))
+            replacement.add(Instr(kind: opMove, pos: moveSum))
         return (idx, replacement)
 
 

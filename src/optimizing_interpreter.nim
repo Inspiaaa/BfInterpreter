@@ -4,10 +4,7 @@ import ./ir
 import ./optimization
 
 
-type SeqTape {.borrow: `.`.} = distinct seq[uint8]
-
-proc add(self: var SeqTape, value: uint8) {.borrow.}
-proc len(self: SeqTape): int {.borrow.}
+type SeqTape = seq[uint8]
 
 proc init(self: var SeqTape) =
     self.add(0'u8)
@@ -27,8 +24,7 @@ template `[]`(self: SeqTape, index: int): untyped =
     seq[uint8](self)[index]
 
 
-type ArrayTape = object
-    data: array[30000, uint8]
+type ArrayTape = array[30000, uint8]
 
 proc init(self: var ArrayTape) =
     discard
@@ -89,9 +85,9 @@ proc parse*(code: string): seq[Instr] =
     let code = sanitizeCode(code)
     result = @[]
 
-    var idx = 0
+    var idx: TPos = 0
 
-    template count(c: char): int =
+    template count(c: char): TPos =
         let startIdx = idx
         while idx < len(code) and code[idx] == c:
             inc idx
@@ -103,13 +99,13 @@ proc parse*(code: string): seq[Instr] =
 
         case instr
         of '+':
-            result.add(Instr(kind: opAdd, add: uint8(1 + count('+'))))
+            result.add(Instr(kind: opAdd, value: uint8(1 + count('+'))))
         of '-':
-            result.add(Instr(kind: opSub, sub: uint8(1 + count('-'))))
+            result.add(Instr(kind: opSub, value: uint8(1 + count('-'))))
         of '>':
-            result.add(Instr(kind: opMove, move: 1 + count('>')))
+            result.add(Instr(kind: opMove, pos: 1 + count('>')))
         of '<':
-            result.add(Instr(kind: opMove, move: -(1 + count('<'))))
+            result.add(Instr(kind: opMove, pos: -(1 + count('<'))))
         of '[':
             result.add(Instr(kind: opLoopStart))
         of ']':
@@ -135,8 +131,8 @@ proc addJumpInformation*(code: var seq[Instr]) =
                 continue
 
             let openBracket = openBracketPosStack.pop()
-            code[openBracket].endPos = idx
-            code[idx].startPos = openBracket
+            code[openBracket].pos = idx.TPos
+            code[idx].pos = openBracket.TPos
 
 
 proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
@@ -150,9 +146,10 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
     ## - tape.safeAccess(idx: int) = uint8(20)
 
     var codePos: int = 0
-    var tapePos: int = 0
+    var tapePos: TPos = 0
 
     while true:
+        {.computedGoto.}
         {.push overflowchecks: off.}
         let instr = code[codePos]
 
@@ -161,13 +158,13 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
 
         case instr.kind
         of opAdd:
-            tape[tapePos] += instr.add
+            tape[tapePos] += instr.value
 
         of opSub:
-            tape[tapePos] -= instr.sub
+            tape[tapePos] -= instr.value
 
         of opMove:
-            tapePos += instr.move
+            tapePos += instr.pos
             tape.extendIfNecessary(tapePos)
 
         of opWrite:
@@ -184,40 +181,40 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
 
         of opLoopStart:
             if tape[tapePos] == 0:
-                codePos = instr.endPos
+                codePos = instr.pos
 
         of opLoopEnd:
             if tape[tapePos] != 0:
-                codePos = instr.startPos
+                codePos = instr.pos
 
         of opClear:
             tape[tapePos] = 0
 
         of opScan:
             while tape[tapePos] != 0:
-                tapePos += instr.scanStep
+                tapePos += instr.pos
                 tape.extendIfNecessary(tapePos)
 
         of opCopyAdd:
-            tape.safeAccess(tapePos + instr.copyAddOffset) += tape[tapePos]
+            tape.safeAccess(tapePos + instr.pos) += tape[tapePos]
 
         of opCopySub:
-            tape.safeAccess(tapePos + instr.copySubOffset) -= tape[tapePos]
+            tape.safeAccess(tapePos + instr.pos) -= tape[tapePos]
 
         of opMulAdd:
-            tape.safeAccess(tapePos + instr.mulAddOffset.tape) += tape[tapePos] * instr.mulAddOffset.cell
+            tape.safeAccess(tapePos + instr.pos) += tape[tapePos] * instr.value
 
         of opMulSub:
-            tape.safeAccess(tapePos + instr.mulSubOffset.tape) -= tape[tapePos] * instr.mulAddOffset.cell
+            tape.safeAccess(tapePos + instr.pos) -= tape[tapePos] * instr.value
 
         of opAddAtOffset:
-            tape.safeAccess(tapePos + instr.addAtOffset.tape) += instr.addAtOffset.cell
+            tape.safeAccess(tapePos + instr.pos) += instr.value
 
         of opSubAtOffset:
-            tape.safeAccess(tapePos + instr.subAtOffset.tape) -= instr.subAtOffset.cell
+            tape.safeAccess(tapePos + instr.pos) -= instr.value
 
         of opSet:
-            tape[tapePos] = instr.setValue
+            tape[tapePos] = instr.value
 
         of opEnd:
             break

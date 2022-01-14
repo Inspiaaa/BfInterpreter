@@ -38,86 +38,26 @@ type
         opAddAtOffset,  # >>>+ or >>+++ ...
         opSubAtOffset,  # >>>- or >>--- ...
 
-    ValueWithOffset* = ref object
-        cell*: uint8
-        tape*: int
+    TPos* = int32
+    TCell* = uint8
 
+    # Represents one instruction that can be executed by the interpreter.
+    # Every instruction has a type (-> opcode), and can optionally store one cell value (uint8)
+    # and one tape position (int32).
     Instr* = object
-        case kind*: InstrKind
-        of opAdd:
-            add*: uint8
-        of opSub:
-            sub*: uint8
-        of opMove:
-            move*: int
+        # The performance of the interpreter is quite sensitive to the order of these fields.
+        pos*: TPos
+        kind*: InstrKind
+        value*: TCell
 
-        of opLoopStart:
-            endPos*: int
-        of opLoopEnd:
-            startPos*: int
+        # TODO: Maybe use template methods to simulate the other fields, like move, offset, endPos, ...
+        # You could then even implement checks for the type
 
-        of opRead, opWrite, opClear: discard
-        of opSet:
-            setValue*: uint8
-
-        of opScan:
-            scanStep*: int
-
-        of opCopyAdd:
-            copyAddOffset*: int
-        of opCopySub:
-            copySubOffset*: int
-
-        of opMulAdd:
-            mulAddOffset*: ValueWithOffset
-        of opMulSub:
-            mulSubOffset*: ValueWithOffset
-
-        of opAddAtOffset:
-            addAtOffset*: ValueWithOffset
-        of opSubAtOffset:
-            subAtOffset*: ValueWithOffset
-
-        of opEnd:
-            discard
+# echo sizeof(Instr)
 
 
 proc `==`*(a: Instr, kind: InstrKind): bool =
     a.kind == kind
-
-proc `==`*(a: Instr, b: Instr): bool =
-    if a.kind != b.kind:
-        return false
-
-    case a.kind
-    of opAdd:
-        return a.add == b.add
-    of opSub:
-        return a.sub == b.sub
-    of opMove:
-        return a.move == b.move
-    of opLoopStart:
-        return a.startPos == b.startPos
-    of opLoopEnd:
-        return a.endPos == b.endPos
-    of opScan:
-        return a.scanStep == b.scanStep
-    of opCopyAdd:
-        return a.copyAddOffset == b.copyAddOffset
-    of opCopySub:
-        return a.copySubOffset == b.copySubOffset
-    of opMulAdd:
-        return a.mulAddOffset[] == b.mulAddOffset[]
-    of opMulSub:
-        return a.mulSubOffset[] == b.mulSubOffset[]
-    of opAddAtOffset:
-        return a.addAtOffset[] == b.addAtOffset[]
-    of opSubAtOffset:
-        return a.subAtOffset[] == b.subAtOffset[]
-    of opSet:
-        return a.setValue == b.setValue
-    else:
-        return true
 
 proc `!=`*(a: Instr, kind: InstrKind): bool =
     a.kind != kind
