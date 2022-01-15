@@ -16,14 +16,15 @@ Usage:
   bfi r [optional-params]
 Runs the interpreter.
 Options:
-  -h, --help                     print this cligen-erated help
-  --help-syntax                  advanced: prepend,plurals,..
-  -f=, --file=    string  ""     Path to the file with the BF code
-  -c=, --code=    string  ""     Directly enter BF code as a string
-  -n, --noOpt     bool    false  Flag to disable optimizations
-  -i=, --input=   string  ""     Path to the input data; Uses stdin if none specified
-  -o=, --output=  string  ""     Path to the output file; Uses stdout if none specified
-  -s, --silent    bool    false  Flag that, when provided, prevents the interpreter from outputting any text
+  -h, --help                       print this cligen-erated help
+  --help-syntax                    advanced: prepend,plurals,..
+  -f=, --file=      string  ""     Path to the file with the BF code
+  -c=, --code=      string  ""     Directly enter BF code as a string
+  -n, --noOpt       bool    false  Flag to disable optimizations
+  -i=, --input=     string  ""     Path to the input data; Uses stdin if none specified
+  -o=, --output=    string  ""     Path to the output file; Uses stdout if none specified
+  -s, --silent      bool    false  Flag that, when provided, prevents the interpreter from outputting any text
+  -t=, --tapeSize=  int     30000  Number of cells in the tape. Dynamically grows the tape for tapeSize=-1
 
 Usage:
   bfi inspect [optional-params]
@@ -56,6 +57,11 @@ bfi r -c "->+>>>+>>-[++++++[>+++++++++>+++++>+<<<-]<+]>>.>--.->++..>>+.>-[>.<<]>
 # Silent: Prevents the program from outputting any text, useful for benchmarking
 bfi r -f examples/hanoi.bf -s
 
+# Set the size of the tape
+bfi r -f examples/hanoi.bf -t 1000
+bfi r -f examples/hanoi.bf -tapeSize 1000
+# Let the tape dynamically grow as it needs more cells
+bfi r -f examples/hanoi.bf -t -1
 
 # Prints the instructions of the optimized code in the console.
 bfi inspect -c ">>>+++[->+<]"

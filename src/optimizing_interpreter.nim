@@ -2,54 +2,7 @@
 import std/streams
 import ./ir
 import ./optimization
-
-
-type SeqTape = seq[uint8]
-
-proc init(self: var SeqTape) =
-    self.add(0'u8)
-
-template extendIfNecessary(self: SeqTape, targetPos: int) =
-    while len(self) <= targetPos:
-            self.add(0)
-
-template safeAccess(self: SeqTape, targetPos: int): untyped =
-    self.extendIfNecessary(targetPos)
-    self[targetPos]
-
-
-type ArrayTape = array[30000, uint8]
-
-proc init(self: var ArrayTape) =
-    discard
-
-template extendIfNecessary(self: ArrayTape, targetPos: int) =
-    discard
-
-template safeAccess(self: ArrayTape, targetPos: int): untyped =
-    self[targetPos]
-
-
-type UncheckedArrayTape = object
-    data: ptr UncheckedArray[uint8]
-
-proc init(self: var UncheckedArrayTape) =
-    self.data = cast[ptr UncheckedArray[uint8]](alloc0(30000))
-
-proc `=destroy`(self: var UncheckedArrayTape) =
-    dealloc(self.data)
-
-template extendIfNecessary(self: UncheckedArrayTape, targetPos: int) =
-    discard
-
-template safeAccess(self: UncheckedArrayTape, targetPos: int): untyped =
-    self.data[targetPos]
-
-template `[]=`(self: UncheckedArrayTape, index: int, value: uint8): untyped =
-    self.data[index] = value
-
-template `[]`(self: UncheckedArrayTape, index: int): untyped =
-    self.data[index]
+import ./tape
 
 
 proc sanitizeCode(code: string): string =
@@ -213,21 +166,23 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
         {.pop.}
 
 
-proc run*(code: seq[Instr], input, output: Stream) =
-    # var tape: SeqTape
-    # init(tape)
-    # run[SeqTape](code, tape, input, output)
-    var tape: UncheckedArrayTape
-    init(tape)
-    run[UncheckedArrayTape](code, tape, input, output)
-
-
 proc optimize*(code: seq[Instr]): seq[Instr] =
     optimization.optimize(code, allOptimizers)
 
 
-proc run*(code: string; input, output: Stream) =
+proc run*(code: seq[Instr], input, output: Stream, tapeSize = 30000) =
+    if tapeSize == -1:
+        var tape: SeqTape
+        init(tape)
+        run[SeqTape](code, tape, input, output)
+    else:
+        var tape: UncheckedArrayTape
+        init(tape, tapeSize)
+        run[UncheckedArrayTape](code, tape, input, output)
+
+
+proc run*(code: string, input, output: Stream, tapeSize = 30000) =
     var instructions = parse(code)
     instructions = optimize(instructions)
     addJumpInformation(instructions)
-    run(instructions, input, output)
+    run(instructions, input, output, tapeSize)

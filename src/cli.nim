@@ -26,7 +26,8 @@ proc r(
         noOpt: bool = false,
         input: string = "",
         output: string = "",
-        silent: bool = false) =
+        silent: bool = false,
+        tapeSize: int = 30000) =
     ## Runs the interpreter.
 
     let code = getCode(file, code)
@@ -46,7 +47,7 @@ proc r(
     if noOpt:
         naive_interpreter.run(code, inputStream, outputStream)
     else:
-        optimizing_interpreter.run(code, inputStream, outputStream)
+        optimizing_interpreter.run(code, inputStream, outputStream, tapeSize)
 
 
 proc inspect(
@@ -80,6 +81,7 @@ dispatchMulti(
             "input": "Path to the input data; Uses stdin if none specified",
             "output": "Path to the output file; Uses stdout if none specified",
             "silent": "Flag that, when provided, prevents the interpreter from outputting any text",
+            "tapeSize": "Number of cells in the tape. Dynamically grows the tape for tapeSize=-1"
         }
     ],
     [
