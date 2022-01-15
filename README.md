@@ -74,7 +74,7 @@ bfi inspect -f examples/mandelbrot.bf -n 100
 
 ```batch
 nimble install cligen
-nim c --out:bfi.exe -d:release -d:danger src/cli.nim
+nim c --out:bfi.exe -d:danger --gc:markAndSweep src/cli.nim
 ```
 
 The `-d:danger` flag makes the program run faster at the cost of runtime checks. This flag can of course be omitted when compiling.
@@ -128,8 +128,8 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 | `<`         | Move the pointer to the left by 1 block.                            |
 | `+`         | Increment the current block.                                        |
 | `-`         | Decrement the current block.                                        |
-| `[`         | Jump to the corresponding `]` if the current block is `0`.          |
-| `]`         | Jump back to the corresponding `[` if the current block is not `0`. |
+| `[`         | Jump to the corresponding `]` if the current block is `0`.          |
+| `]`         | Jump back to the corresponding `[` if the current block is not `0`. |
 | `.`         | Write the current block as an ASCII character.                      |
 | `,`         | Read one byte from the input stream into the current block.         |
 
@@ -137,9 +137,9 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 
 | Instruction   | BF Example           | Meaning                                                                  |
 | ------------- | -------------------- | ------------------------------------------------------------------------ |
-| opAdd         | `+`, `+++`           | Performs multiple `+` instructions at once.                              |
+| opAdd         | `+`, `+++`           | Performs multiple `+` instructions at once.                              |
 | opSub         | `-`, `---`           | ...                                                                      |
-| opMove        | `>`, `<`, `>>>`      | Performs multiple `>` or `<` instructions at once.                       |
+| opMove        | `>`, `<`, `>>>`      | Performs multiple `>` or `<` instructions at once.                       |
 | opLoopStart   | `[`                  |                                                                          |
 | opLoopEnd     | `]`                  |                                                                          |
 | opWrite       | `.`                  |                                                                          |
@@ -183,10 +183,10 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 Start of mandelbrot.bf (with comments):
 
 ```
-+++++++++++++                             # A
-[->++>>>+++++>++>+<<<<<<]                 # B
++++++++++++++                             # A
+[->++>>>+++++>++>+<<<<<<]                 # B
 >>>>>++++++>--->>>>>>>>>>+++++++++++++++  # C
-[[>>>>>>>>>]                              # D
+[[>>>>>>>>>]                              # D
 # ...
 ```
 
