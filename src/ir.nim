@@ -44,16 +44,19 @@ type
     # Represents one instruction that can be executed by the interpreter.
     # Every instruction has a type (-> opcode), and can optionally store one cell value (uint8)
     # and one tape position (int32).
+    # Currently sizeof(Instr) = 8 bytes
     Instr* = object
         # The performance of the interpreter is quite sensitive to the order of these fields.
         pos*: TPos
         kind*: InstrKind
         value*: TCell
 
-        # TODO: Maybe use template methods to simulate the other fields, like move, offset, endPos, ...
-        # You could then even implement checks for the type
-
 # echo sizeof(Instr)
+
+# Aliases for the common fields of Instr to enhance readability.
+template offset*(instr: Instr): untyped = instr.pos
+template scanStep*(instr: Instr): untyped = instr.pos
+template factor*(instr: Instr): untyped = instr.value
 
 
 proc `==`*(a: Instr, kind: InstrKind): bool =

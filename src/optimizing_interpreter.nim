@@ -17,12 +17,6 @@ template safeAccess(self: SeqTape, targetPos: int): untyped =
     self.extendIfNecessary(targetPos)
     self[targetPos]
 
-template `[]=`(self: SeqTape, index: int, value: uint8): untyped =
-    seq[uint8](self)[index] = value
-
-template `[]`(self: SeqTape, index: int): untyped =
-    seq[uint8](self)[index]
-
 
 type ArrayTape = array[30000, uint8]
 
@@ -34,12 +28,6 @@ template extendIfNecessary(self: ArrayTape, targetPos: int) =
 
 template safeAccess(self: ArrayTape, targetPos: int): untyped =
     self[targetPos]
-
-template `[]=`(self: ArrayTape, index: int, value: uint8): untyped =
-    self.data[index] = value
-
-template `[]`(self: ArrayTape, index: int): untyped =
-    self.data[index]
 
 
 type UncheckedArrayTape = object
@@ -145,6 +133,8 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
     ## - tape.safeAccess(idx: int) -> uint8
     ## - tape.safeAccess(idx: int) = uint8(20)
 
+    # TODO: Make safeAccess a template here that calls the relevent procs, instead of forcing the tape to have these methods.
+
     var codePos: int = 0
     var tapePos: TPos = 0
 
@@ -184,34 +174,34 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
                 codePos = instr.pos
 
         of opLoopEnd:
-            if tape[tapePos] != 0:
+            if bool(tape[tapePos]):
                 codePos = instr.pos
 
         of opClear:
             tape[tapePos] = 0
 
         of opScan:
-            while tape[tapePos] != 0:
-                tapePos += instr.pos
+            while bool(tape[tapePos]):
+                tapePos += instr.scanStep
                 tape.extendIfNecessary(tapePos)
 
         of opCopyAdd:
-            tape.safeAccess(tapePos + instr.pos) += tape[tapePos]
+            tape.safeAccess(tapePos + instr.offset) += tape[tapePos]
 
         of opCopySub:
-            tape.safeAccess(tapePos + instr.pos) -= tape[tapePos]
+            tape.safeAccess(tapePos + instr.offset) -= tape[tapePos]
 
         of opMulAdd:
-            tape.safeAccess(tapePos + instr.pos) += tape[tapePos] * instr.value
+            tape.safeAccess(tapePos + instr.offset) += tape[tapePos] * instr.factor
 
         of opMulSub:
-            tape.safeAccess(tapePos + instr.pos) -= tape[tapePos] * instr.value
+            tape.safeAccess(tapePos + instr.offset) -= tape[tapePos] * instr.factor
 
         of opAddAtOffset:
-            tape.safeAccess(tapePos + instr.pos) += instr.value
+            tape.safeAccess(tapePos + instr.offset) += instr.value
 
         of opSubAtOffset:
-            tape.safeAccess(tapePos + instr.pos) -= instr.value
+            tape.safeAccess(tapePos + instr.offset) -= instr.value
 
         of opSet:
             tape[tapePos] = instr.value

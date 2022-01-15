@@ -151,23 +151,23 @@ For example, to increment the current cell by 4, in BF you'd write: `++++`. The 
 ### Optimisation phases
 
 1. **Parsing**
-   
+
    Converts the string instructions into `Instr` objects. Already fuses multiple `+`,`-`, `>` and `<` instructions into one instruction (opAdd, opSub, and opMove, respectively). This makes the subsequent optimisation phase faster and simpler.
 
 2. **Advanced optimisations**
-   
+
    1. Clear loops
-   
+
    2. Scan loops
-   
+
    3. Copy loops
-   
+
    4. Multiplication loops
-   
+
    5. "Lazy movements" (Operation at an offset)
 
 3. **Jump table creation**
-   
+
    In order to not have to search for the corresponding bracket of a `[` and `]` instruction, precompute the target jump locations before executing the program. E.g. First `[` instruction jumps to index 10...
 
 4. **Execution**
@@ -214,14 +214,14 @@ First 14 instructions of the optimised code (`bfi inspect -f examples/mandelbrot
 
 ## Unscientific Benchmarks
 
-`bench/bench.nim` (`nim c -r -d:release -d:danger bench/bench.nim`)
+`bench/bench.nim` (`nim c -r -d:danger --gc:markAndSweep bench/bench.nim`)
 
-Runs the interpreter in silent mode, i.e. doesn't print anything to the console. 
+Runs the interpreter in silent mode, i.e. doesn't print anything to the console.
 
 | Input program     | Unoptimised Time / s | Optimised Time / s |
 | ----------------- | -------------------- | ------------------ |
-| **mandelbrot.bf** | 15.001               | **3.152**          |
-| **hanoi.bf**      | 9.069                | **0.146**          |
+| **mandelbrot.bf** | 13.081               | **2.722**          |
+| **hanoi.bf**      | 8.123                | **0.138**          |
 
 ---
 
