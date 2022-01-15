@@ -2,7 +2,44 @@
 import std/streams
 import ./ir
 import ./optimization
-import ./tape
+
+
+type SeqTape* = seq[uint8]
+
+proc init*(self: var SeqTape) =
+    self.add(0'u8)
+
+template extendIfNecessary*(self: SeqTape, targetPos: int) =
+    while len(self) <= targetPos:
+        self.add(0)
+
+
+type ArrayTape* = array[30000, uint8]
+
+proc init*(self: var ArrayTape) =
+    discard
+
+template extendIfNecessary*(self: ArrayTape, targetPos: int) =
+    discard
+
+
+type UncheckedArrayTape* = object
+    data*: ptr UncheckedArray[uint8]
+
+proc init*(self: var UncheckedArrayTape, size: int = 30000) =
+    self.data = cast[ptr UncheckedArray[uint8]](alloc0(size))
+
+proc `=destroy`*(self: var UncheckedArrayTape) =
+    dealloc(self.data)
+
+template extendIfNecessary*(self: UncheckedArrayTape, targetPos: int) =
+    discard
+
+template `[]=`*(self: UncheckedArrayTape, index: int, value: uint8): untyped =
+    self.data[index] = value
+
+template `[]`*(self: UncheckedArrayTape, index: int): untyped =
+    self.data[index]
 
 
 proc sanitizeCode(code: string): string =
@@ -83,10 +120,10 @@ proc run*[T](code: seq[Instr], tape: var T, input, output: Stream) =
     ## - tape.extendIfNecessary(targetPos: int)
     ## - tape[idx: int] -> uint8
     ## - tape[idx: int] = uint8
-    ## - tape.safeAccess(idx: int) -> uint8
-    ## - tape.safeAccess(idx: int) = uint8(20)
 
-    # TODO: Make safeAccess a template here that calls the relevent procs, instead of forcing the tape to have these methods.
+    template safeAccess(self: T, targetPos: int): untyped =
+        self.extendIfNecessary(targetPos)
+        self[targetPos]
 
     var codePos: int = 0
     var tapePos: TPos = 0
