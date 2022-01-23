@@ -1,4 +1,6 @@
 
+import std/strformat
+
 # Intermediate representation of the BF code
 
 type
@@ -57,6 +59,37 @@ type
 template offset*(instr: Instr): untyped = instr.pos
 template scanStep*(instr: Instr): untyped = instr.pos
 template factor*(instr: Instr): untyped = instr.value
+
+proc `$`*(instr: Instr): string =
+    var posLabel = ""
+    var valueLabel = ""
+
+    case instr.kind
+    of opAdd, opSub, opSet:
+        valueLabel = "value"
+    of opLoopStart, opLoopEnd:
+        posLabel = "pos"
+    of opEnd, opClear, opWrite, opRead:
+        discard
+    of opMove, opScan:
+        posLabel = "offset"
+    of opCopyAdd, opCopySub:
+        posLabel = "offset"
+    of opAddAtOffset, opSubAtOffset:
+        posLabel = "offset"
+        valueLabel = "value"
+    of opMulAdd, opMulSub:
+        posLabel = "offset"
+        valueLabel = "factor"
+
+    let kind = instr.kind
+    let pos = instr.pos
+    let value = instr.value
+
+    let posStringified = if len(posLabel) > 0: &", {posLabel}: {pos}" else: ""
+    let valueStringified = if len(valueLabel) > 0: &", {valueLabel}: {value}" else: ""
+
+    return &"({kind}{posStringified}{valueStringified})"
 
 
 proc `==`*(a: Instr, kind: InstrKind): bool =

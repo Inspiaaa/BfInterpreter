@@ -7,6 +7,7 @@ import cligen
 import ./optimizing_interpreter
 import ./naive_interpreter
 import ./silent_stream
+import ./ir  # Required for custom stringify method
 
 
 template getCode(file: string, code: string): string =
@@ -68,7 +69,7 @@ proc inspect(
 
     let number = if number == -1: len(instructions) else: number
     for i in 0..<number:
-        outputStream.writeLine(instructions[i])
+        outputStream.writeLine($instructions[i])
 
 
 dispatchMulti(

@@ -15,12 +15,8 @@ template extendIfNecessary*(self: SeqTape, targetPos: int) =
 
 
 type ArrayTape* = array[30000, uint8]
-
-proc init*(self: var ArrayTape) =
-    discard
-
-template extendIfNecessary*(self: ArrayTape, targetPos: int) =
-    discard
+proc init*(self: var ArrayTape) = discard
+template extendIfNecessary*(self: ArrayTape, targetPos: int) = discard
 
 
 type UncheckedArrayTape* = object

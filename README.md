@@ -194,26 +194,26 @@ First 14 instructions of the optimised code (`bfi inspect -f examples/mandelbrot
 
 ```
 # A
-(kind: opAdd, add: 13)
+(opAdd, value: 13)
 
 # B
-(kind: opLoopStart, endPos: 7)
-(kind: opMulAdd, mulAddOffset: ...)
-(kind: opMulAdd, mulAddOffset: ...)
-(kind: opMulAdd, mulAddOffset: ...)
-(kind: opCopyAdd, copyAddOffset: 6)
-(kind: opClear)
-(kind: opLoopEnd, startPos: 1)
+(opLoopStart, pos: 7)
+(opMulAdd, offset: 1, factor: 2)
+(opMulAdd, offset: 4, factor: 5)
+(opMulAdd, offset: 5, factor: 2)
+(opCopyAdd, offset: 6)
+(opClear)
+(opLoopEnd, pos: 1)
 
 # C
-(kind: opAddAtOffset, addAtOffset: ...)
-(kind: opSubAtOffset, subAtOffset: ...)
-(kind: opAddAtOffset, addAtOffset: ...)
-(kind: opMove, move: 16)
+(opAddAtOffset, offset: 5, value: 6)
+(opSubAtOffset, offset: 6, value: 3)
+(opAddAtOffset, offset: 16, value: 15)
+(opMove, offset: 16)
 
 # D
-(kind: opLoopStart, endPos: 18)
-(kind: opScan, scanStep: 9)
+(opLoopStart, pos: 18)
+(opScan, offset: 9)
 ```
 
 ---
