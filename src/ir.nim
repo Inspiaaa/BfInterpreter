@@ -43,6 +43,9 @@ type
     TPos* = int32
     TCell* = uint8
 
+    # I deliberately chose not to go for nim's object variants for the Instr object to allow for
+    # a more compact (-> performant) representation of the data.
+
     # Represents one instruction that can be executed by the interpreter.
     # Every instruction has a type (-> opcode), and can optionally store one cell value (uint8)
     # and one tape position (int32).
